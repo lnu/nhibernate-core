@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2" assembly="NHibernate.Test"
+                   namespace="NHibernate.Test.NHSpecificTest.NHLNU" >
+  <class name="Job" abstract="true">
+    <id name="Id" type="Guid" unsaved-value="00000000-0000-0000-0000-000000000000">
+      <generator class="guid.comb" />
+    </id>
+    <bag name="JobMaterials" inverse="true" cascade="all,delete-orphan">
+      <key column="JobId" />
+      <one-to-many class="JobMaterial" />
+    </bag>
+  </class>
+  <joined-subclass name="JobTranslation" extends="Job">
+    <key column="Id" foreign-key="JobTranslation_Job_FK" />
+    <property name="PropertyA" />
+  </joined-subclass>
+  <joined-subclass name="JobModification" extends="Job">
+    <key column="Id" foreign-key="JobModification_Job_FK" />
+    <property name="PropertyB" />
+  </joined-subclass>
+  <joined-subclass name="JobRevision" extends="Job">
+    <key column="Id" foreign-key="JobRevision_Job_FK" />
+    <property name="PropertyC" />
+  </joined-subclass>
+  <class name="Material" abstract="true">
+    <id name="Id" type="Guid" unsaved-value="00000000-0000-0000-0000-000000000000">
+      <generator class="guid.comb" />
+    </id>
+    <property name="MaterialType" />
+  </class>
+  <joined-subclass name="PhysicalFile" extends="Material">
+    <key column="Id" foreign-key="PhysicalFile_Material_FK" />
+    <property name="FileSize" />
+    <property name="FileName" />
+    <property name="PhysicalPath" />
+  </joined-subclass>
+  <joined-subclass name="NetworkFile" extends="Material">
+    <key column="Id" foreign-key="NetworkFile_Material_FK" />
+    <property name="FilePath" />
+  </joined-subclass>
+  <joined-subclass name="Url" extends="Material">
+    <key column="Id" foreign-key="Url_Material_FK" />
+    <property name="UrlName" />
+    <property name="ShortName" />
+    <property name="IsSecure" not-null="true" />
+    <property name="Login" />
+    <property name="Password" />
+  </joined-subclass>
+  <class name="JobMaterial">
+    <id name="Id" type="Guid" unsaved-value="00000000-0000-0000-0000-000000000000">
+      <generator class="guid.comb" />
+    </id>
+    <many-to-one name="Material" column="MaterialId" not-null="true" cascade="save-update, persist" foreign-key="JobMaterial_Material_FK" lazy="false" />
+    <many-to-one name="Job" column="JobId" not-null="true" foreign-key="JobMaterial_Job_FK" />
+  </class>
+</hibernate-mapping>
