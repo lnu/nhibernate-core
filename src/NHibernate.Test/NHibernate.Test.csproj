@@ -739,6 +739,8 @@
     <Compile Include="NHSpecificTest\EntityWithUserTypeCanHaveLinqGenerators\IExample.cs" />
     <Compile Include="NHSpecificTest\NH3950\Entity.cs" />
     <Compile Include="NHSpecificTest\NH3950\Fixture.cs" />
+    <Compile Include="NHSpecificTest\InheritanceBug\Entity.cs" />
+    <Compile Include="NHSpecificTest\InheritanceBug\Fixture.cs" />
     <Compile Include="NHSpecificTest\NH3952\Entity.cs" />
     <Compile Include="NHSpecificTest\NH3952\Fixture.cs" />
     <Compile Include="NHSpecificTest\NH2204\Model.cs" />
