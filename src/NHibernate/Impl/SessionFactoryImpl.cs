@@ -1291,6 +1291,7 @@ namespace NHibernate.Impl
 			private ConnectionReleaseMode _connectionReleaseMode;
 			private FlushMode _flushMode;
 			private bool _autoClose;
+			private bool _autoJoinTransaction = true;
 
 			public SessionBuilderImpl(SessionFactoryImpl sessionFactory)
 			{
@@ -1314,6 +1315,8 @@ namespace NHibernate.Impl
 			public virtual FlushMode InitialSessionFlushMode => _flushMode;
 
 			public virtual bool ShouldAutoClose => _autoClose;
+
+			public virtual bool ShouldAutoJoinTransaction => _autoJoinTransaction;
 
 			public DbConnection UserSuppliedConnection => _connection;
 
@@ -1372,6 +1375,12 @@ namespace NHibernate.Impl
 				return _this;
 			}
 
+			public virtual T AutoJoinTransaction(bool autoJoinTransaction)
+			{
+				_autoJoinTransaction = autoJoinTransaction;
+				return _this;
+			}
+
 			public virtual T FlushMode(FlushMode flushMode)
 			{
 				_flushMode = flushMode;
@@ -1402,6 +1411,8 @@ namespace NHibernate.Impl
 			public FlushMode InitialSessionFlushMode => FlushMode.Always;
 
 			public bool ShouldAutoClose => false;
+
+			public bool ShouldAutoJoinTransaction => false;
 
 			public DbConnection UserSuppliedConnection => _connection;
 

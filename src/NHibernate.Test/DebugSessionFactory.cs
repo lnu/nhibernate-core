@@ -436,6 +436,12 @@ namespace NHibernate.Test
 				return this;
 			}
 
+			ISessionBuilder ISessionBuilder<ISessionBuilder>.AutoJoinTransaction(bool autoJoinTransaction)
+			{
+				_actualBuilder.AutoJoinTransaction(autoJoinTransaction);
+				return this;
+			}
+
 			ISessionBuilder ISessionBuilder<ISessionBuilder>.FlushMode(FlushMode flushMode)
 			{
 				_actualBuilder.FlushMode(flushMode);

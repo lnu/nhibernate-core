@@ -62,7 +62,8 @@ namespace NHibernate.AdoNet
 			ISessionImplementor session,
 			DbConnection suppliedConnection,
 			ConnectionReleaseMode connectionReleaseMode,
-			IInterceptor interceptor)
+			IInterceptor interceptor,
+			bool shouldAutoJoinTransaction)
 		{
 			Session = session;
 			_connection = suppliedConnection;
@@ -72,6 +73,7 @@ namespace NHibernate.AdoNet
 			_batcher = session.Factory.Settings.BatcherFactory.CreateBatcher(this, interceptor);
 
 			_ownConnection = suppliedConnection == null;
+			ShouldAutoJoinTransaction = shouldAutoJoinTransaction;
 		}
 
 		public void AddDependentSession(ISessionImplementor session)
@@ -92,6 +94,8 @@ namespace NHibernate.AdoNet
 
 		public bool IsConnected
 			=> _connection != null || _ownConnection;
+
+		public bool ShouldAutoJoinTransaction { get; }
 
 		public void Reconnect()
 		{
@@ -141,6 +145,7 @@ namespace NHibernate.AdoNet
 
 			var c = _connection;
 			_connection = null;
+			_connectionAmbientTransaction = null;
 			return c;
 		}
 
@@ -186,7 +191,8 @@ namespace NHibernate.AdoNet
 				if (_ownConnection)
 				{
 					_connection = Factory.ConnectionProvider.GetConnection();
-					_connectionAmbientTransaction = System.Transactions.Transaction.Current;
+
+					EnlistIfRequired(System.Transactions.Transaction.Current);
 					if (Factory.Statistics.IsStatisticsEnabled)
 					{
 						Factory.StatisticsImplementor.Connect();
@@ -392,8 +398,7 @@ namespace NHibernate.AdoNet
 		public void EnlistIfRequired(System.Transactions.Transaction transaction)
 		{
 			if (_connection == null ||
-				// Let user handles transaction if connection was supplied.
-				!_ownConnection ||
+				!ShouldAutoJoinTransaction ||
 				// Most connections do not support enlisting in a system transaction while already participating
 				// in a local transaction. They are not supposed to be mixed anyway.
 				IsInActiveExplicitTransaction ||

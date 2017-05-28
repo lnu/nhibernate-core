@@ -29,6 +29,11 @@ namespace NHibernate.Transaction
 			// Handle the transaction on the originating session only.
 			var originatingSession = session.ConnectionManager.Session;
 
+			if (!session.ConnectionManager.ShouldAutoJoinTransaction)
+			{
+				return;
+			}
+
 			// Ensure the session does not run on a thread supposed to be blocked, waiting
 			// for transaction completion.
 			originatingSession.TransactionContext?.WaitOne();

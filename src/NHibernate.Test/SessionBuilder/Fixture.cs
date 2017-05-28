@@ -35,10 +35,32 @@ namespace NHibernate.Test.SessionBuilder
 			var options = DebugSessionFactory.GetCreationOptions(sb);
 			CanSet(sb, sb.AutoClose, () => options.ShouldAutoClose,
 				sb is ISharedSessionBuilder ssb ? ssb.AutoClose : default(Func<ISharedSessionBuilder>),
-				// initial values
+				// initial value
 				false,
 				// values
 				true, false);
+		}
+
+		[Test]
+		public void CanSetAutoJoinTransaction()
+		{
+			var sb = Sfi.WithOptions();
+			CanSetAutoJoinTransaction(sb);
+			using (var s = sb.OpenSession())
+			{
+				CanSetAutoJoinTransaction(s.SessionWithOptions());
+			}
+		}
+
+		private void CanSetAutoJoinTransaction<T>(T sb) where T : ISessionBuilder<T>
+		{
+			var options = DebugSessionFactory.GetCreationOptions(sb);
+			CanSet(sb, sb.AutoJoinTransaction, () => options.ShouldAutoJoinTransaction,
+				sb is ISharedSessionBuilder ssb ? ssb.AutoJoinTransaction : default(Func<ISharedSessionBuilder>),
+				// initial value
+				true,
+				// values
+				false, true);
 		}
 
 		[Test]
@@ -136,7 +158,7 @@ namespace NHibernate.Test.SessionBuilder
 			var options = DebugSessionFactory.GetCreationOptions(sb);
 			CanSet(sb, sb.ConnectionReleaseMode, () => options.SessionConnectionReleaseMode,
 				sb is ISharedSessionBuilder ssb ? ssb.ConnectionReleaseMode : default(Func<ISharedSessionBuilder>),
-				// initial values
+				// initial value
 				Sfi.Settings.ConnectionReleaseMode,
 				// values
 				ConnectionReleaseMode.OnClose, ConnectionReleaseMode.AfterStatement, ConnectionReleaseMode.AfterTransaction);
@@ -158,7 +180,7 @@ namespace NHibernate.Test.SessionBuilder
 			var options = DebugSessionFactory.GetCreationOptions(sb);
 			CanSet(sb, sb.FlushMode, () => options.InitialSessionFlushMode,
 				sb is ISharedSessionBuilder ssb ? ssb.FlushMode : default(Func<ISharedSessionBuilder>),
-				// initial values
+				// initial value
 				Sfi.Settings.DefaultFlushMode,
 				// values
 				FlushMode.Always, FlushMode.Auto, FlushMode.Commit, FlushMode.Manual);

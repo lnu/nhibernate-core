@@ -105,21 +105,17 @@ namespace NHibernate.Test.NHSpecificTest.NH1632
 				//closing the connection to ensure we can't really use it.
 				var connection = Sfi.ConnectionProvider.GetConnection();
 				Sfi.ConnectionProvider.CloseConnection(connection);
+
 				// The session is supposed to succeed because the second level cache should have the
 				// entity to load, allowing the session to not use the connection at all.
-				// Will fail if transaction manager tries to enlist user supplied connection, due
-				// to the transaction scope below.
-
-				using (var tx = new TransactionScope())
+				// Will fail if a transaction manager tries to enlist user supplied connection. Do
+				// not add a transaction scope below.
+				using (var s = Sfi.WithOptions().Connection(connection).OpenSession())
 				{
-					using (var s = Sfi.WithOptions().Connection(connection).OpenSession())
-					{
-						Nums nums = null;
-						Assert.DoesNotThrow(() => nums = s.Load<Nums>(29), "Failed loading entity from second level cache.");
-						Assert.AreEqual(1, nums.NumA);
-						Assert.AreEqual(3, nums.NumB);
-					}
-					tx.Complete();
+					Nums nums = null;
+					Assert.DoesNotThrow(() => nums = s.Load<Nums>(29), "Failed loading entity from second level cache.");
+					Assert.AreEqual(1, nums.NumA);
+					Assert.AreEqual(3, nums.NumB);
 				}
 			}
 			finally

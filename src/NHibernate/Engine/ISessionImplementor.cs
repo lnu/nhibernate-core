@@ -302,20 +302,23 @@ namespace NHibernate.Engine
 
 		IQuery GetNamedQuery(string queryName);
 
-		/// <summary> Determine whether the session is closed.  Provided separately from
-		/// {@link #isOpen()} as this method does not attempt any JTA sync
-		/// registration, where as {@link #isOpen()} does; which makes this one
-		/// nicer to use for most internal purposes. 
+		/// <summary>
+		/// Determine whether the session is closed. Provided separately from
+		/// <c>IsOpen</c> as this method does not attempt any system transaction sync
+		/// registration, whereas <c>IsOpen</c> is allowed to (does not currently, but may do
+		/// in a future version as it is the case in Hibernate); which makes this one
+		/// nicer to use for most internal purposes.
 		/// </summary>
-		/// <returns> True if the session is closed; false otherwise.
+		/// <returns>
+		/// <see langword="true" /> if the session is closed; <see langword="false" /> otherwise.
 		/// </returns>
 		bool IsClosed { get; }
 
 		void Flush();
 
-		/// <summary> 
-		/// Does this <tt>Session</tt> have an active Hibernate transaction
-		/// or is there a JTA transaction in progress?
+		/// <summary>
+		/// Does this <c>ISession</c> have an active NHibernate transaction
+		/// or is there a system transaction in progress in which the session is enlisted?
 		/// </summary>
 		bool TransactionInProgress { get; }
 

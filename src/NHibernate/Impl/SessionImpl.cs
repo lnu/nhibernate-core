@@ -205,7 +205,8 @@ namespace NHibernate.Impl
 				}
 				else
 				{
-					connectionManager = new ConnectionManager(this, options.UserSuppliedConnection, connectionReleaseMode, Interceptor);
+					connectionManager = new ConnectionManager(
+						this, options.UserSuppliedConnection, connectionReleaseMode, Interceptor, options.ShouldAutoJoinTransaction);
 				}
 
 				if (factory.Statistics.IsStatisticsEnabled)
@@ -2550,6 +2551,8 @@ namespace NHibernate.Impl
 			public virtual ISharedSessionBuilder FlushMode() => FlushMode(_session.FlushMode);
 
 			public virtual ISharedSessionBuilder AutoClose() => AutoClose(_session.autoCloseSessionEnabled);
+
+			public virtual ISharedSessionBuilder AutoJoinTransaction() => AutoJoinTransaction(_session.ConnectionManager.ShouldAutoJoinTransaction);
 
 			// NH different implementation, avoid an error case.
 			public override ISharedSessionBuilder Connection(DbConnection connection)
