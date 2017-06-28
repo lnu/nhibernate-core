@@ -1460,6 +1460,7 @@
     <Compile Include="Stateless\TreeNode.cs" />
     <Compile Include="Subselect\ClassSubselectFixture.cs" />
     <Compile Include="Subselect\Domain.cs" />
+    <Compile Include="SystemTransactions\ResourceManagerFixture.cs" />
     <Compile Include="SystemTransactions\DistributedSystemTransactionFixture.cs" />
     <Compile Include="SystemTransactions\SystemTransactionFixtureBase.cs" />
     <Compile Include="TestCaseMappingByCode.cs" />
