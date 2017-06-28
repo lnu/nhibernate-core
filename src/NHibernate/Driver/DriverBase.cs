@@ -313,6 +313,8 @@ namespace NHibernate.Driver
 
 		public virtual bool RequiresTimeSpanForTime => false;
 
+		public virtual bool SupportsSystemTransactions => true;
+
 		public virtual bool SupportsNullEnlistment => true;
 
 		public virtual bool HasDelayedDistributedTransactionCompletion => false;
