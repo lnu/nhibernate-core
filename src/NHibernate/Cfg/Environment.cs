@@ -117,6 +117,15 @@ namespace NHibernate.Cfg
 		public const string OutputStylesheet = "xml.output_stylesheet";
 
 		public const string TransactionStrategy = "transaction.factory_class";
+		/// <summary>
+		/// When a system transaction is being prepared, is using connection during this process enabled?
+		/// Default is <see langword="true"/>, for supporting <see cref="FlushMode.Commit"/> with transaction factories
+		/// supporting system transactions. But this requires enlisting additional connections, retaining disposed
+		/// sessions and their connections till transaction end, and may trigger undesired transaction promotions to
+		/// distributed. Set to <see langword="false"/> for disabling using connections from system
+		/// transaction preparation, while still benefiting from <see cref="FlushMode.Auto"/> on querying.
+		/// </summary>
+		public const string UseConnectionOnSystemTransactionPrepare = "transaction.use_connection_on_system_prepare";
 
 		// Unused, not implemented (and somewhat Java-specific)
 		public const string TransactionManagerStrategy = "transaction.manager_lookup_class";

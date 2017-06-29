@@ -1,11 +1,12 @@
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Transactions;
 using NHibernate.Engine;
 using NHibernate.Engine.Transaction;
 using NHibernate.Impl;
+using NHibernate.Util;
 
 namespace NHibernate.Transaction
 {
@@ -14,9 +15,13 @@ namespace NHibernate.Transaction
 		private static readonly IInternalLogger _logger = LoggerProvider.LoggerFor(typeof(ITransactionFactory));
 
 		private readonly AdoNetTransactionFactory _adoNetTransactionFactory = new AdoNetTransactionFactory();
+		private bool _useConnectionOnSystemTransactionPrepare;
 
-		public void Configure(IDictionary props)
+		public void Configure(IDictionary<string, string> props)
 		{
+			_adoNetTransactionFactory.Configure(props);
+			_useConnectionOnSystemTransactionPrepare =
+				PropertiesHelper.GetBoolean(Cfg.Environment.UseConnectionOnSystemTransactionPrepare, props, true);
 		}
 
 		public ITransaction CreateTransaction(ISessionImplementor session)
@@ -29,7 +34,7 @@ namespace NHibernate.Transaction
 			// Handle the transaction on the originating session only.
 			var originatingSession = session.ConnectionManager.Session;
 
-			if (!session.ConnectionManager.ShouldAutoJoinTransaction)
+			if (!originatingSession.ConnectionManager.ShouldAutoJoinTransaction)
 			{
 				return;
 			}
@@ -59,10 +64,10 @@ namespace NHibernate.Transaction
 				return;
 			}
 
-			var transactionContext = new SystemTransactionContext(originatingSession, transaction);
+			var transactionContext = new SystemTransactionContext(originatingSession, transaction, _useConnectionOnSystemTransactionPrepare);
 			transactionContext.AmbientTransaction.EnlistVolatile(
 				transactionContext,
-				EnlistmentOptions.EnlistDuringPrepareRequired);
+				_useConnectionOnSystemTransactionPrepare ? EnlistmentOptions.EnlistDuringPrepareRequired : EnlistmentOptions.None);
 			originatingSession.TransactionContext = transactionContext;
 
 			_logger.DebugFormat(
@@ -96,19 +101,23 @@ namespace NHibernate.Transaction
 			internal System.Transactions.Transaction AmbientTransaction { get; private set; }
 			public bool ShouldCloseSessionOnSystemTransactionCompleted { get; set; }
 			public bool IsInActiveTransaction { get; internal set; }
+			public bool CanFlushOnSystemTransactionCompleted => _useConnectionOnSystemTransactionPrepare;
 
 			private readonly ISessionImplementor _sessionImplementor;
+			private readonly bool _useConnectionOnSystemTransactionPrepare;
 			private volatile SemaphoreSlim _semaphore;
 			private volatile bool _locked;
 			private readonly AsyncLocal<bool> _bypassWait = new AsyncLocal<bool>();
 
 			public SystemTransactionContext(
 				ISessionImplementor sessionImplementor,
-				System.Transactions.Transaction transaction)
+				System.Transactions.Transaction transaction,
+				bool useConnectionOnSystemTransactionPrepare)
 			{
 				_sessionImplementor = sessionImplementor;
 				AmbientTransaction = transaction.Clone();
 				AmbientTransaction.TransactionCompleted += TransactionCompleted;
+				_useConnectionOnSystemTransactionPrepare = useConnectionOnSystemTransactionPrepare;
 				IsInActiveTransaction = true;
 			}
 
@@ -182,26 +191,31 @@ namespace NHibernate.Transaction
 				{
 					try
 					{
-						using (var tx = new TransactionScope(AmbientTransaction))
+						using (_sessionImplementor.ConnectionManager.BeginsFlushingFromSystemTransaction(_useConnectionOnSystemTransactionPrepare))
 						{
-							if (_sessionImplementor.ConnectionManager.IsConnected)
+							if (_useConnectionOnSystemTransactionPrepare)
 							{
-								using (_sessionImplementor.ConnectionManager.BeginsFlushingFromSystemTransaction())
+								using (var tx = new TransactionScope(AmbientTransaction))
 								{
 									_sessionImplementor.BeforeTransactionCompletion(null);
 									foreach (var dependentSession in _sessionImplementor.ConnectionManager.DependentSessions)
 										dependentSession.BeforeTransactionCompletion(null);
 
-									_logger.Debug("prepared for system transaction");
-
 									tx.Complete();
 								}
+							}
+							else
+							{
+								_sessionImplementor.BeforeTransactionCompletion(null);
+								foreach (var dependentSession in _sessionImplementor.ConnectionManager.DependentSessions)
+									dependentSession.BeforeTransactionCompletion(null);
 							}
 						}
 						// Lock the session to ensure second phase gets done before the session is used by code following
 						// the transaction scope disposal.
 						Lock();
 
+						_logger.Debug("Prepared for system transaction");
 						preparingEnlistment.Prepared();
 					}
 					catch (Exception exception)
@@ -265,8 +279,8 @@ namespace NHibernate.Transaction
 				{
 					using (new SessionIdLoggingContext(_sessionImplementor.SessionId))
 					{
-						// Flag active as false before running actions, otherwise the connection manager will refuse
-						// releasing the connection.
+						// Flag active as false before running actions, otherwise the session may not cleanup as much
+						// as possible.
 						IsInActiveTransaction = false;
 						_sessionImplementor.ConnectionManager.AfterTransaction();
 						_sessionImplementor.AfterTransactionCompletion(wasSuccessful, null);
@@ -338,6 +352,9 @@ namespace NHibernate.Transaction
 				=> _mainTransactionContext.IsInActiveTransaction;
 
 			public bool ShouldCloseSessionOnSystemTransactionCompleted { get; set; }
+
+			public bool CanFlushOnSystemTransactionCompleted
+				=> _mainTransactionContext.CanFlushOnSystemTransactionCompleted;
 
 			private readonly ITransactionContext _mainTransactionContext;
 

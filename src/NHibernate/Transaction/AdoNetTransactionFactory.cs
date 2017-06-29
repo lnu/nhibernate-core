@@ -1,8 +1,7 @@
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-
 using NHibernate.Dialect;
 using NHibernate.Engine;
 using NHibernate.Engine.Transaction;
@@ -113,7 +112,7 @@ namespace NHibernate.Transaction
 			}
 		}
 
-		public void Configure(IDictionary props)
+		public void Configure(IDictionary<string, string> props)
 		{
 		}
 	}

@@ -218,7 +218,8 @@ namespace NHibernate.Impl
 
 		public override void BeforeTransactionCompletion(ITransaction tx)
 		{
-			FlushBeforeTransactionCompletion();
+			if (tx != null || TransactionContext?.CanFlushOnSystemTransactionCompleted != false)
+				FlushBeforeTransactionCompletion();
 		}
 
 		public override void FlushBeforeTransactionCompletion()
@@ -867,7 +868,7 @@ namespace NHibernate.Impl
 			{
 				log.Debug("running IStatelessSession.Dispose()");
 				TransactionContext?.WaitOne();
-				if (TransactionContext != null)
+				if (TransactionContext != null && TransactionContext.CanFlushOnSystemTransactionCompleted)
 				{
 					TransactionContext.ShouldCloseSessionOnSystemTransactionCompleted = true;
 					return;

@@ -398,9 +398,11 @@ namespace NHibernate.Cfg
 
 			try
 			{
-				return
+				var transactionFactory =
 					(ITransactionFactory)
 					Environment.BytecodeProvider.ObjectsFactory.CreateInstance(ReflectHelper.ClassForName(className));
+				transactionFactory.Configure(properties);
+				return transactionFactory;
 			}
 			catch (Exception cnfe)
 			{

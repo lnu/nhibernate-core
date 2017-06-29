@@ -12,9 +12,12 @@ namespace NHibernate.Test.SystemTransactions
 	[TestFixture]
 	public class SystemTransactionFixture : SystemTransactionFixtureBase
 	{
+		protected override bool UseConnectionOnSystemTransactionPrepare => true;
+
 		[Test]
 		public void WillNotCrashOnPrepareFailure()
 		{
+			IgnoreIfUnsupported(false);
 			var tx = new TransactionScope();
 			var disposeCalled = false;
 			try
@@ -45,9 +48,10 @@ namespace NHibernate.Test.SystemTransactions
 			}
 		}
 
-		[Test]
-		public void CanRollbackTransactionFromScope([Values(false, true)] bool explicitFlush)
+		[Theory]
+		public void CanRollbackTransactionFromScope(bool explicitFlush)
 		{
+			IgnoreIfUnsupported(explicitFlush);
 			using (new TransactionScope())
 			using (var s = OpenSession())
 			{
@@ -61,10 +65,11 @@ namespace NHibernate.Test.SystemTransactions
 			AssertNoPersons();
 		}
 
-		[Test]
+		[Theory]
 		[Description("rollback inside nh-session-scope should not commit save and the transaction should be aborted.")]
-		public void TransactionInsertWithRollBackFromScope([Values(false, true)] bool explicitFlush)
+		public void TransactionInsertWithRollBackFromScope(bool explicitFlush)
 		{
+			IgnoreIfUnsupported(explicitFlush);
 			using (new TransactionScope())
 			{
 				using (var s = OpenSession())
@@ -80,12 +85,13 @@ namespace NHibernate.Test.SystemTransactions
 			AssertNoPersons();
 		}
 
-		[Test]
+		[Theory]
 		[Description(@"Two session in two txscope
  (without an explicit NH transaction)
  and with a rollback in the second and a rollback outside nh-session-scope.")]
-		public void TransactionInsertLoadWithRollBackFromScope([Values(false, true)] bool explicitFlush)
+		public void TransactionInsertLoadWithRollBackFromScope(bool explicitFlush)
 		{
+			IgnoreIfUnsupported(explicitFlush);
 			object savedId;
 			var createdAt = DateTime.Today;
 			using (var txscope = new TransactionScope())
@@ -122,9 +128,10 @@ namespace NHibernate.Test.SystemTransactions
 			}
 		}
 
-		[Test]
-		public void CanDeleteItem([Values(false, true)] bool explicitFlush)
+		[Theory]
+		public void CanDeleteItem(bool explicitFlush)
 		{
+			IgnoreIfUnsupported(explicitFlush);
 			object id;
 			using (var tx = new TransactionScope())
 			{
@@ -161,9 +168,10 @@ namespace NHibernate.Test.SystemTransactions
 			AssertNoPersons();
 		}
 
-		[Test]
-		public void CanUseSessionWithManyScopes([Values(false, true)] bool explicitFlush)
+		[Theory]
+		public void CanUseSessionWithManyScopes(bool explicitFlush)
 		{
+			IgnoreIfUnsupported(explicitFlush);
 			using (var s = Sfi.WithOptions().ConnectionReleaseMode(ConnectionReleaseMode.OnClose).OpenSession())
 			{
 				using (var tx = new TransactionScope())
@@ -216,9 +224,10 @@ namespace NHibernate.Test.SystemTransactions
 			}
 		}
 
-		[Test]
-		public void CanUseSessionOutsideOfScopeAfterScope([Values(false, true)] bool explicitFlush)
+		[Theory]
+		public void CanUseSessionOutsideOfScopeAfterScope(bool explicitFlush)
 		{
+			IgnoreIfUnsupported(explicitFlush);
 			using (var s = Sfi.WithOptions().ConnectionReleaseMode(ConnectionReleaseMode.OnClose).OpenSession())
 			{
 				using (var tx = new TransactionScope())
@@ -239,9 +248,11 @@ namespace NHibernate.Test.SystemTransactions
 			}
 		}
 
-		[Test(Description = "Do not fail, but warn in case a delayed after scope disposal commit is made.")]
-		public void DelayedTransactionCompletion([Values(false, true)] bool explicitFlush)
+		[Theory]
+		[Description("Do not fail, but warn in case a delayed after scope disposal commit is made.")]
+		public void DelayedTransactionCompletion(bool explicitFlush)
 		{
+			IgnoreIfUnsupported(explicitFlush);
 			for (var i = 1; i <= 10; i++)
 			{
 				// Isolation level must be read committed on the control session: reading twice while expecting some data insert
@@ -282,6 +293,8 @@ namespace NHibernate.Test.SystemTransactions
 		[Test]
 		public void FlushFromTransactionAppliesToDisposedSharingSession()
 		{
+			IgnoreIfUnsupported(false);
+
 			var flushOrder = new List<int>();
 			using (var s = OpenSession(new TestInterceptor(0, flushOrder)))
 			{
@@ -320,6 +333,8 @@ namespace NHibernate.Test.SystemTransactions
 		[Test]
 		public void FlushFromTransactionAppliesToSharingSession()
 		{
+			IgnoreIfUnsupported(false);
+
 			var flushOrder = new List<int>();
 			using (var s = OpenSession(new TestInterceptor(0, flushOrder)))
 			{
@@ -351,5 +366,55 @@ namespace NHibernate.Test.SystemTransactions
 				t.Commit();
 			}
 		}
+
+		// Taken and adjusted from NH1632 When_commiting_items_in_DTC_transaction_will_add_items_to_2nd_level_cache
+		[Test]
+		public void WhenCommittingItemsAfterSessionDisposalWillAddThemTo2ndLevelCache()
+		{
+			int id;
+			const string notNullData = "test";
+			using (var tx = new TransactionScope())
+			{
+				using (var s = OpenSession())
+				{
+					var person = new CacheablePerson { NotNullData = notNullData };
+					s.Save(person);
+					id = person.Id;
+
+					s.Flush();
+				}
+				tx.Complete();
+			}
+
+			using (var tx = new TransactionScope())
+			{
+				using (var s = OpenSession())
+				{
+					var person = s.Load<CacheablePerson>(id);
+					Assert.That(person.NotNullData, Is.EqualTo(notNullData));
+				}
+				tx.Complete();
+			}
+
+			// Closing the connection to ensure we can't actually use it.
+			var connection = Sfi.ConnectionProvider.GetConnection();
+			Sfi.ConnectionProvider.CloseConnection(connection);
+
+			// The session is supposed to succeed because the second level cache should have the
+			// entity to load, allowing the session to not use the connection at all.
+			// Will fail if a transaction manager tries to enlist user supplied connection. Do
+			// not add a transaction scope below.
+			using (var s = Sfi.WithOptions().Connection(connection).OpenSession())
+			{
+				CacheablePerson person = null;
+				Assert.DoesNotThrow(() => person = s.Load<CacheablePerson>(id), "Failed loading entity from second level cache.");
+				Assert.That(person.NotNullData, Is.EqualTo(notNullData));
+			}
+		}
+	}
+
+	public class SystemTransactionWithoutConnectionFromPrepareFixture : SystemTransactionFixture
+	{
+		protected override bool UseConnectionOnSystemTransactionPrepare => false;
 	}
 }

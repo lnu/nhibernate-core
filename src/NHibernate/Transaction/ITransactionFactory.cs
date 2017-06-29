@@ -1,4 +1,4 @@
-using System.Collections;
+using System.Collections.Generic;
 using NHibernate.Engine;
 using NHibernate.Engine.Transaction;
 
@@ -18,7 +18,7 @@ namespace NHibernate.Transaction
 		/// Configure from the given properties
 		/// </summary>
 		/// <param name="props"></param>
-		void Configure(IDictionary props);
+		void Configure(IDictionary<string, string> props);
 
 		/// <summary>
 		/// Create a new transaction and return it without starting it.

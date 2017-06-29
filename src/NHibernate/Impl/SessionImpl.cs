@@ -339,6 +339,12 @@ namespace NHibernate.Impl
 					log.Error("exception in interceptor afterTransactionCompletion()", t);
 				}
 
+				if (IsClosed)
+				{
+					// Cleanup was delayed to transaction completion, do it now.
+					persistenceContext.Clear();
+				}
+
 				//if (autoClear)
 				//	Clear();
 			}
@@ -348,6 +354,9 @@ namespace NHibernate.Impl
 		{
 			using (new SessionIdLoggingContext(SessionId))
 			{
+				// Let the after tran clear that if we are still in an active system transaction.
+				if (TransactionContext?.IsInActiveTransaction == true)
+					return;
 				persistenceContext.Clear();
 			}
 		}
@@ -1557,7 +1566,7 @@ namespace NHibernate.Impl
 			{
 				log.Debug(string.Format("[session-id={0}] running ISession.Dispose()", SessionId));
 				TransactionContext?.WaitOne();
-				if (TransactionContext != null)
+				if (TransactionContext != null && TransactionContext.CanFlushOnSystemTransactionCompleted)
 				{
 					TransactionContext.ShouldCloseSessionOnSystemTransactionCompleted = true;
 					return;
@@ -2101,7 +2110,8 @@ namespace NHibernate.Impl
 			using (new SessionIdLoggingContext(SessionId))
 			{
 				log.Debug("before transaction completion");
-				FlushBeforeTransactionCompletion();
+				if (tx != null || TransactionContext?.CanFlushOnSystemTransactionCompleted != false)
+					FlushBeforeTransactionCompletion();
 				actionQueue.BeforeTransactionCompletion();
 				try
 				{
