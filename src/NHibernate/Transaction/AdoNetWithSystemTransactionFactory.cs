@@ -66,7 +66,7 @@ namespace NHibernate.Transaction
 			originatingSession.TransactionContext = transactionContext;
 
 			_logger.DebugFormat(
-				"enlisted into DTC transaction: {0}",
+				"enlisted into system transaction: {0}",
 				transactionContext.AmbientTransaction.IsolationLevel);
 
 			originatingSession.AfterTransactionBegin(null);
@@ -101,7 +101,6 @@ namespace NHibernate.Transaction
 			private volatile SemaphoreSlim _semaphore;
 			private volatile bool _locked;
 			private readonly AsyncLocal<bool> _bypassWait = new AsyncLocal<bool>();
-			private bool IsDistributed => AmbientTransaction.TransactionInformation.DistributedIdentifier != Guid.Empty;
 
 			public SystemTransactionContext(
 				ISessionImplementor sessionImplementor,
@@ -131,10 +130,11 @@ namespace NHibernate.Transaction
 					if (semaphore.Wait(5000))
 						return;
 					// A call occurring after transaction scope disposal should not have to wait long, since
-					// the scope disposal is supposed to block until the transaction has completed: I hope
-					// that it at least ensures IO are done, even if experience shows DTC lets the scope
-					// disposal leave before having finished with volatile ressources and
-					// TransactionCompleted event.
+					// the scope disposal is supposed to block until the transaction has completed. When not
+					// distributed, all is done, no wait. When distributed, with MSDTC, the scope disposal is
+					// left after all prepare phases, and the complete of all resources including the NHibernate
+					// one is concurrently raised. So the wait should indeed only have to wait after NHibernate
+					// AfterTransaction events.
 					// Remove the block then throw.
 					Unlock();
 					throw new HibernateException(
@@ -186,7 +186,7 @@ namespace NHibernate.Transaction
 						{
 							if (_sessionImplementor.ConnectionManager.IsConnected)
 							{
-								using (_sessionImplementor.ConnectionManager.BeginsFlushingFromSystemTransaction(IsDistributed))
+								using (_sessionImplementor.ConnectionManager.BeginsFlushingFromSystemTransaction())
 								{
 									_sessionImplementor.BeforeTransactionCompletion(null);
 									foreach (var dependentSession in _sessionImplementor.ConnectionManager.DependentSessions)
@@ -233,12 +233,7 @@ namespace NHibernate.Transaction
 							: "System transaction is in doubt");
 					// we have not much to do here, since it is the actual
 					// DB connection that will commit/rollback the transaction
-					// Usual cases will raise after transaction actions from TransactionCompleted event.
-					if (!success.HasValue)
-					{
-						// In-doubt. A durable ressource has failed and may recover, but we won't wait to know.
-						RunAfterTransactionActions(false);
-					}
+					// After transaction actions are raised from TransactionCompleted event.
 
 					enlistment.Done();
 				}
@@ -263,17 +258,7 @@ namespace NHibernate.Transaction
 				{
 					_logger.Warn("Completed transaction was disposed, assuming transaction rollback", ode);
 				}
-				RunAfterTransactionActions(wasSuccessful);
-			}
 
-			private volatile bool _afterTransactionActionsDone;
-
-			private void RunAfterTransactionActions(bool wasSuccessful)
-			{
-				if (_afterTransactionActionsDone)
-					// Probably called from In-Doubt and TransactionCompleted.
-					return;
-				_afterTransactionActionsDone = true;
 				// Allow transaction completed actions to run while others stay blocked.
 				_bypassWait.Value = true;
 				try
@@ -324,7 +309,7 @@ namespace NHibernate.Transaction
 				// No dispose, done later.
 			}
 
-			private volatile bool _isDisposed;
+			private bool _isDisposed;
 
 			public void Dispose()
 			{

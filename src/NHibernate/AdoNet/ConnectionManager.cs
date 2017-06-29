@@ -420,9 +420,9 @@ namespace NHibernate.AdoNet
 			_connectionAmbientTransaction = transaction;
 		}
 
-		public IDisposable BeginsFlushingFromSystemTransaction(bool isDistributed)
+		public IDisposable BeginsFlushingFromSystemTransaction()
 		{
-			var needSwapping = _ownConnection && isDistributed &&
+			var needSwapping = _ownConnection &&
 				Factory.Dialect.SupportsConcurrentWritingConnectionsInSameTransaction;
 			if (needSwapping)
 			{
