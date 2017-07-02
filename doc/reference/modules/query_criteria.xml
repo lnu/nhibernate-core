@@ -252,12 +252,12 @@ IList results = session.CreateCriteria(typeof(Cat))
     .SetProjection( Projections.Alias( Projections.GroupProperty("Color"), "colr" ) )
     .AddOrder( Order.Asc("colr") )
     .List();]]></programlisting>
-    
+
         <programlisting><![CDATA[IList results = session.CreateCriteria(typeof(Cat))
     .SetProjection( Projections.GroupProperty("Color").As("colr") )
     .AddOrder( Order.Asc("colr") )
     .List();]]></programlisting>
-    
+
         <para>
             The <literal>Alias()</literal> and <literal>As()</literal> methods simply wrap a
             projection instance in another, aliased, instance of <literal>IProjection</literal>.
@@ -275,7 +275,7 @@ IList results = session.CreateCriteria(typeof(Cat))
     .AddOrder( Order.Desc("catCountByColor") )
     .AddOrder( Order.Desc("avgWeight") )
     .List();]]></programlisting>
-    
+
         <programlisting><![CDATA[IList results = session.CreateCriteria(typeof(DomesticCat), "cat")
     .CreateAlias("kittens", "kit")
     .SetProjection( Projections.ProjectionList()
@@ -285,24 +285,25 @@ IList results = session.CreateCriteria(typeof(Cat))
     .AddOrder( Order.Asc("catName") )
     .AddOrder( Order.Asc("kitName") )
     .List();]]></programlisting>
-    
+
     </sect1>
 
     <sect1 id="querycriteria-detachedqueries">
         <title>Detached queries and sub-queries</title>
         <para>
-            The <literal>DetachedCriteria</literal> class lets you create a query outside the scope 
+            The <literal>DetachedCriteria</literal> class lets you create a query outside the scope
             of a session, and then later execute it using some arbitrary <literal>ISession</literal>.
         </para>
-        
+
         <programlisting><![CDATA[DetachedCriteria query = DetachedCriteria.For(typeof(Cat))
     .Add( Expression.Eq("sex", 'F') );
-    
-ISession session = ....;
-ITransaction txn = session.BeginTransaction();
-IList results = query.GetExecutableCriteria(session).SetMaxResults(100).List();
-txn.Commit();
-session.Close();]]></programlisting>
+
+using (ISession session = ....)
+using (ITransaction txn = session.BeginTransaction())
+{
+    IList results = query.GetExecutableCriteria(session).SetMaxResults(100).List();
+    txn.Commit();
+}]]></programlisting>
 
         <para>
             A <literal>DetachedCriteria</literal> may also be used to express a sub-query. ICriterion

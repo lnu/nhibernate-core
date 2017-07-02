@@ -174,10 +174,12 @@
 
             <programlisting><![CDATA[// foo is an instance loaded earlier by the Session
 session.Reconnect();
-transaction = session.BeginTransaction();
-foo.Property = "bar";
-session.Flush();
-transaction.Commit();
+using (var transaction = session.BeginTransaction())
+{
+    foo.Property = "bar";
+    session.Flush();
+    transaction.Commit();
+}
 session.Disconnect();]]></programlisting>
 
             <para>
@@ -201,21 +203,22 @@ session.Disconnect();]]></programlisting>
             <title>Many sessions with automatic versioning</title>
 
             <para>
-                Each interaction with the persistent store occurs in a new <literal>ISession</literal>. 
+                Each interaction with the persistent store occurs in a new <literal>ISession</literal>.
                 However, the same persistent instances are reused for each interaction with the database.
                 The application manipulates the state of detached instances originally loaded in another
-                <literal>ISession</literal> and then "re-associates" them using 
+                <literal>ISession</literal> and then "re-associates" them using
                 <literal>ISession.Update()</literal> or <literal>ISession.SaveOrUpdate()</literal>.
             </para>
 
             <programlisting><![CDATA[// foo is an instance loaded by a previous Session
 foo.Property = "bar";
-session = factory.OpenSession();
-transaction = session.BeginTransaction();
-session.SaveOrUpdate(foo);
-session.Flush();
-transaction.Commit();
-session.Close();]]></programlisting>
+using (var session = factory.OpenSession())
+using (var transaction = session.BeginTransaction())
+{
+    session.SaveOrUpdate(foo);
+    session.Flush();
+    transaction.Commit();
+}]]></programlisting>
 
             <para>
                 You may also call <literal>Lock()</literal> instead of <literal>Update()</literal>
@@ -280,15 +283,16 @@ session.Close();]]></programlisting>
             </para>
 
             <programlisting><![CDATA[// foo is an instance loaded by a previous Session
-session = factory.OpenSession();
-transaction = session.BeginTransaction();
-int oldVersion = foo.Version;
-session.Load( foo, foo.Key );
-if ( oldVersion != foo.Version ) throw new StaleObjectStateException();
-foo.Property = "bar";
-session.Flush();
-transaction.Commit();
-session.close();]]></programlisting>
+using (var session = factory.OpenSession())
+using (var transaction = session.BeginTransaction())
+{
+    int oldVersion = foo.Version;
+    session.Load( foo, foo.Key );
+    if ( oldVersion != foo.Version ) throw new StaleObjectStateException();
+    foo.Property = "bar";
+    session.Flush();
+    transaction.Commit();
+}]]></programlisting>
 
             <para>
                 Of course, if you are operating in a low-data-concurrency environment and don't
@@ -303,9 +307,9 @@ session.close();]]></programlisting>
         <title>Session disconnection</title>
 
         <para>
-            The first approach described above is to maintain a single <literal>ISession</literal> 
-            for a whole business process thats spans user think time. (For example, a servlet might 
-            keep an <literal>ISession</literal> in the user's <literal>HttpSession</literal>.) For 
+            The first approach described above is to maintain a single <literal>ISession</literal>
+            for a whole business process thats spans user think time. (For example, a servlet might
+            keep an <literal>ISession</literal> in the user's <literal>HttpSession</literal>.) For
             performance reasons you should
         </para>
 
@@ -323,21 +327,21 @@ session.close();]]></programlisting>
         </orderedlist>
 
         <para>
-            before waiting for user activity. The method <literal>ISession.Disconnect()</literal> 
-            will disconnect the session from the ADO.NET connection and return the connection to 
+            before waiting for user activity. The method <literal>ISession.Disconnect()</literal>
+            will disconnect the session from the ADO.NET connection and return the connection to
             the pool (unless you provided the connection).
         </para>
 
         <para>
-            <literal>ISession.Reconnect()</literal> obtains a new connection (or you may supply one) 
-            and restarts the session. After reconnection, to force a version check on data you aren't 
+            <literal>ISession.Reconnect()</literal> obtains a new connection (or you may supply one)
+            and restarts the session. After reconnection, to force a version check on data you aren't
             updating, you may call <literal>ISession.Lock()</literal> on any objects that might have
             been updated by another transaction. You don't need to lock any data that you
             <emphasis>are</emphasis> updating.
         </para>
 
         <para>
-            Heres an example:
+            Here is an example:
         </para>
 
         <programlisting><![CDATA[ISessionFactory sessions;
@@ -400,7 +404,7 @@ finally
 
         <para>
             You can see from this how the relationship between <literal>ITransaction</literal>s and
-            <literal>ISession</literal>s is many-to-one, An <literal>ISession</literal> represents a 
+            <literal>ISession</literal>s is many-to-one, An <literal>ISession</literal> represents a
             conversation between the application and the database. The
             <literal>ITransaction</literal> breaks that conversation up into atomic units of work
             at the database level.
@@ -456,8 +460,8 @@ finally
         <listitem>
         <para>
             <literal>LockMode.None</literal> represents the absence of a lock. All objects switch to this
-            lock mode at the end of an <literal>ITransaction</literal>. Objects associated with the session 
-            via a call to <literal>Update()</literal> or <literal>SaveOrUpdate()</literal> also start out 
+            lock mode at the end of an <literal>ITransaction</literal>. Objects associated with the session
+            via a call to <literal>Update()</literal> or <literal>SaveOrUpdate()</literal> also start out
             in this lock mode.
         </para>
         </listitem>
@@ -490,13 +494,13 @@ finally
             <literal>UpgradeNoWait</literal>, and the requested object was not yet loaded by
             the session, the object is loaded using <literal>SELECT ... FOR UPDATE</literal>.
             If <literal>Load()</literal> is called for an object that is already loaded with
-            a less restrictive lock than the one requested, NHibernate calls 
+            a less restrictive lock than the one requested, NHibernate calls
             <literal>Lock()</literal> for that object.
         </para>
         
         <para>
             <literal>ISession.Lock()</literal> performs a version number check if the specified lock
-            mode is <literal>Read</literal>, <literal>Upgrade</literal> or 
+            mode is <literal>Read</literal>, <literal>Upgrade</literal> or
             <literal>UpgradeNoWait</literal>. (In the case of <literal>Upgrade</literal> or
             <literal>UpgradeNoWait</literal>, <literal>SELECT ... FOR UPDATE</literal> is used.)
         </para>
@@ -569,8 +573,9 @@ finally
         </itemizedlist>
 
         <para>
-            As of NHibernate, if your application manages transactions through .NET APIs such as <literal>
-            System.Transactions</literal> library, <literal>ConnectionReleaseMode.AfterTransaction</literal> may cause
+            If your application manages transactions through .NET APIs such as <literal>System.Transactions</literal> library
+            while not using a compatible transaction factory (see <literal>transaction.factory_class</literal>)
+            in <xref linkend="configuration-optional"/>), <literal>ConnectionReleaseMode.AfterTransaction</literal> may cause
             NHibernate to open and close several connections during one transaction, leading to unnecessary overhead and
             transaction promotion from local to distributed. Specifying <literal>ConnectionReleaseMode.OnClose</literal>
             will revert to the legacy behavior and prevent this problem from occurring.

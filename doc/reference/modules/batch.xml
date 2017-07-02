@@ -2,29 +2,31 @@
     <title>Batch processing</title>
     
     <para>
-        A naive approach to inserting 100 000 rows in the database using NHibernate might 
+        A naive approach to inserting 100 000 rows in the database using NHibernate might
         look like this:
     </para>
 
-<programlisting><![CDATA[ISession session = sessionFactory.OpenSession();
-ITransaction tx = session.BeginTransaction();
-for ( int i=0; i<100000; i++ ) {
-    Customer customer = new Customer(.....);
-    session.Save(customer);
-}
-tx.Commit();
-session.Close();]]></programlisting>
+<programlisting><![CDATA[using (ISession session = sessionFactory.OpenSession())
+using (ITransaction tx = session.BeginTransaction())
+{
+    for (int i = 0; i < 100000; i++)
+    {
+        Customer customer = new Customer(.....);
+        session.Save(customer);
+    }
+    tx.Commit();
+}]]></programlisting>
 
     <para>
-        This would fall over with an <literal>OutOfMemoryException</literal> somewhere 
-        around the 50 000th row. That's because NHibernate caches all the newly inserted 
-        <literal>Customer</literal> instances in the session-level cache. 
+        This would fall over with an <literal>OutOfMemoryException</literal> somewhere
+        around the 50 000th row. That's because NHibernate caches all the newly inserted
+        <literal>Customer</literal> instances in the session-level cache.
     </para>
 
     <para>
         In this chapter we'll show you how to avoid this problem. First, however, if you
         are doing batch processing, it is absolutely critical that you enable the use of
-        ADO batching, if you intend to achieve reasonable performance. Set the ADO batch 
+        ADO batching, if you intend to achieve reasonable performance. Set the ADO batch
         size to a reasonable number (say, 10-50):
     </para>
     
@@ -36,7 +38,7 @@ session.Close();]]></programlisting>
     </para>
 
     <para>
-        You also might like to do this kind of work in a process where interaction with 
+        You also might like to do this kind of work in a process where interaction with
         the second-level cache is completely disabled:
     </para>
 
@@ -51,59 +53,63 @@ session.Close();]]></programlisting>
         <title>Batch inserts</title>
 
         <para>
-            When making new objects persistent, you must <literal>Flush()</literal> and 
+            When making new objects persistent, you must <literal>Flush()</literal> and
             then <literal>Clear()</literal> the session regularly, to control the size of
             the first-level cache.
         </para>
 
-<programlisting><![CDATA[ISession session = sessionFactory.openSession();
-ITransaction tx = session.BeginTransaction();
-   
-for ( int i=0; i<100000; i++ ) {
-    Customer customer = new Customer(.....);
-    session.Save(customer);
-    if ( i % 20 == 0 ) { //20, same as the ADO batch size
-        //flush a batch of inserts and release memory:
-        session.Flush();
-        session.Clear();
+<programlisting><![CDATA[using (ISession session = sessionFactory.openSession())
+using (ITransaction tx = session.BeginTransaction())
+{
+    for (int i = 0; i < 100000; i++)
+    {
+        Customer customer = new Customer(.....);
+        session.Save(customer);
+        // 20, same as the ADO batch size
+        if (i % 20 == 0)
+        {
+            // flush a batch of inserts and release memory:
+            session.Flush();
+            session.Clear();
+        }
     }
-}
-   
-tx.Commit();
-session.Close();]]></programlisting>
+
+    tx.Commit();
+}]]></programlisting>
 
     </sect1>
 
     <sect1 id="batch-statelesssession">
         <title>The StatelessSession interface</title>
         <para>
-            Alternatively, NHibernate provides a command-oriented API that may be used for 
-            streaming data to and from the database in the form of detached objects. A 
+            Alternatively, NHibernate provides a command-oriented API that may be used for
+            streaming data to and from the database in the form of detached objects. A
             <literal>IStatelessSession</literal> has no persistence context associated
             with it and does not provide many of the higher-level life cycle semantics.
             In particular, a stateless session does not implement a first-level cache nor
-            interact with any second-level or query cache. It does not implement 
+            interact with any second-level or query cache. It does not implement
             transactional write-behind or automatic dirty checking. Operations performed
-            using a stateless session do not ever cascade to associated instances. Collections 
-            are ignored by a stateless session. Operations performed via a stateless session 
-            bypass NHibernate's event model and interceptors. Stateless sessions are vulnerable 
+            using a stateless session do not ever cascade to associated instances. Collections
+            are ignored by a stateless session. Operations performed via a stateless session
+            bypass NHibernate's event model and interceptors. Stateless sessions are vulnerable
             to data aliasing effects, due to the lack of a first-level cache. A stateless
             session is a lower-level abstraction, much closer to the underlying ADO.
         </para>
         
-<programlisting><![CDATA[IStatelessSession session = sessionFactory.OpenStatelessSession();
-ITransaction tx = session.BeginTransaction();
-   
-var customers = session.GetNamedQuery("GetCustomers")
-    .Enumerable<Customer>();
-while ( customers.MoveNext() ) {
-    Customer customer = customers.Current;
-    customer.updateStuff(...);
-    session.Update(customer);
-}
-   
-tx.Commit();
-session.Close();]]></programlisting>
+<programlisting><![CDATA[using (IStatelessSession session = sessionFactory.OpenStatelessSession())
+using (ITransaction tx = session.BeginTransaction())
+{
+    var customers = session.GetNamedQuery("GetCustomers")
+        .Enumerable<Customer>();
+    while (customers.MoveNext())
+    {
+        Customer customer = customers.Current;
+        customer.updateStuff(...);
+        session.Update(customer);
+    }
+
+    tx.Commit();
+}]]></programlisting>
 
         <para>
             Note that in this code example, the <literal>Customer</literal> instances returned
@@ -116,8 +122,8 @@ session.Close();]]></programlisting>
             defined by the <literal>StatelessSession</literal> interface are considered to be
             direct database row-level operations, which result in immediate execution of a SQL
             <literal>INSERT, UPDATE</literal> or <literal>DELETE</literal> respectively. Thus,
-            they have very different semantics to the <literal>Save(), SaveOrUpdate()</literal> 
-            and <literal>Delete()</literal> operations defined by the <literal>ISession</literal> 
+            they have very different semantics to the <literal>Save(), SaveOrUpdate()</literal>
+            and <literal>Delete()</literal> operations defined by the <literal>ISession</literal>
             interface.
         </para>
 
@@ -138,7 +144,7 @@ session.Close();]]></programlisting>
 
 	    <para>
             The pseudo-syntax for <literal>UPDATE</literal> and <literal>DELETE</literal> statements
-            is: <literal>( UPDATE | DELETE ) FROM? EntityName (WHERE where_conditions)?</literal>.  Some
+            is: <literal>( UPDATE | DELETE ) FROM? EntityName (WHERE where_conditions)?</literal>. Some
             points to note:
         </para>
 
@@ -175,17 +181,17 @@ session.Close();]]></programlisting>
             <literal>IQuery.ExecuteUpdate()</literal> method:
         </para>
 
-<programlisting><![CDATA[ISession session = sessionFactory.OpenSession();
-ITransaction tx = session.BeginTransaction();
-
-string hqlUpdate = "update Customer c set c.name = :newName where c.name = :oldName";
-// or string hqlUpdate = "update Customer set name = :newName where name = :oldName";
-int updatedEntities = s.CreateQuery( hqlUpdate )
-        .SetString( "newName", newName )
-        .SetString( "oldName", oldName )
+<programlisting><![CDATA[using (ISession session = sessionFactory.OpenSession())
+using (ITransaction tx = session.BeginTransaction())
+{
+    string hqlUpdate = "update Customer c set c.name = :newName where c.name = :oldName";
+    // or string hqlUpdate = "update Customer set name = :newName where name = :oldName";
+    int updatedEntities = s.CreateQuery(hqlUpdate)
+        .SetString("newName", newName)
+        .SetString("oldName", oldName)
         .ExecuteUpdate();
-tx.Commit();
-session.Close();]]></programlisting>
+    tx.Commit();
+}]]></programlisting>
 
         <para>
             HQL <literal>UPDATE</literal> statements, by default do not effect the
@@ -197,15 +203,16 @@ session.Close();]]></programlisting>
             This is achieved by adding the <literal>VERSIONED</literal> keyword after the <literal>UPDATE</literal>
             keyword.
         </para>
-<programlisting><![CDATA[ISession session = sessionFactory.OpenSession();
-ITransaction tx = session.BeginTransaction();
-string hqlVersionedUpdate = "update versioned Customer set name = :newName where name = :oldName";
-int updatedEntities = s.CreateQuery( hqlUpdate )
-        .SetString( "newName", newName )
-        .SetString( "oldName", oldName )
+<programlisting><![CDATA[using (ISession session = sessionFactory.OpenSession())
+using (ITransaction tx = session.BeginTransaction())
+{
+    string hqlVersionedUpdate = "update versioned Customer set name = :newName where name = :oldName";
+    int updatedEntities = s.CreateQuery(hqlUpdate)
+        .SetString("newName", newName)
+        .SetString("oldName", oldName)
         .ExecuteUpdate();
-tx.Commit();
-session.Close();]]></programlisting>
+    tx.Commit();
+}]]></programlisting>
 
         <para>
             Note that custom version types (<literal>NHibernate.Usertype.IUserVersionType</literal>)
@@ -217,22 +224,22 @@ session.Close();]]></programlisting>
             method:
         </para>
 
-<programlisting><![CDATA[ISession session = sessionFactory.OpenSession();
-ITransaction tx = session.BeginTransaction();
-
-String hqlDelete = "delete Customer c where c.name = :oldName";
-// or String hqlDelete = "delete Customer where name = :oldName";
-int deletedEntities = s.CreateQuery( hqlDelete )
-        .SetString( "oldName", oldName )
+<programlisting><![CDATA[using (ISession session = sessionFactory.OpenSession())
+using (ITransaction tx = session.BeginTransaction())
+{
+    string hqlDelete = "delete Customer c where c.name = :oldName";
+    // or String hqlDelete = "delete Customer where name = :oldName";
+    int deletedEntities = s.CreateQuery(hqlDelete)
+        .SetString("oldName", oldName)
         .ExecuteUpdate();
-tx.Commit();
-session.Close();]]></programlisting>
+    tx.Commit();
+}]]></programlisting>
 
         <para>
             The <literal>int</literal> value returned by the <literal>IQuery.ExecuteUpdate()</literal>
             method indicate the number of entities effected by the operation.  Consider this may or may not
             correlate to the number of rows effected in the database.  An HQL bulk operation might result in
-            multiple actual SQL statements being executed, for joined-subclass, for example.  The returned
+            multiple actual SQL statements being executed, for joined-subclass, for example. The returned
             number indicates the number of actual entities affected by the statement.  Going back to the
             example of joined-subclass, a delete against one of the subclasses may actually result
             in deletes against not just the table to which that subclass is mapped, but also the "root"
@@ -241,7 +248,7 @@ session.Close();]]></programlisting>
 
         <para>
             The pseudo-syntax for <literal>INSERT</literal> statements is:
-            <literal>INSERT INTO EntityName properties_list select_statement</literal>.  Some
+            <literal>INSERT INTO EntityName properties_list select_statement</literal>. Some
             points to note:
         </para>
 
@@ -301,14 +308,14 @@ session.Close();]]></programlisting>
             An example HQL <literal>INSERT</literal> statement execution:
         </para>
 
-<programlisting><![CDATA[ISession session = sessionFactory.OpenSession();
-ITransaction tx = session.BeginTransaction();
-
-var hqlInsert = "insert into DelinquentAccount (id, name) select c.id, c.name from Customer c where ...";
-int createdEntities = s.CreateQuery( hqlInsert )
+<programlisting><![CDATA[using (ISession session = sessionFactory.OpenSession())
+using (ITransaction tx = session.BeginTransaction())
+{
+    var hqlInsert = "insert into DelinquentAccount (id, name) select c.id, c.name from Customer c where ...";
+    int createdEntities = s.CreateQuery(hqlInsert)
         .ExecuteUpdate();
-tx.Commit();
-session.Close();]]></programlisting>
+    tx.Commit();
+}]]></programlisting>
 
     </sect1>
 
