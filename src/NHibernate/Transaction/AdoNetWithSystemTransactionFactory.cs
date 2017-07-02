@@ -15,13 +15,13 @@ namespace NHibernate.Transaction
 		private static readonly IInternalLogger _logger = LoggerProvider.LoggerFor(typeof(ITransactionFactory));
 
 		private readonly AdoNetTransactionFactory _adoNetTransactionFactory = new AdoNetTransactionFactory();
-		private bool _useConnectionOnSystemTransactionPrepare;
+		private bool _useConnectionOnSystemTransactionEvents;
 
 		public void Configure(IDictionary<string, string> props)
 		{
 			_adoNetTransactionFactory.Configure(props);
-			_useConnectionOnSystemTransactionPrepare =
-				PropertiesHelper.GetBoolean(Cfg.Environment.UseConnectionOnSystemTransactionPrepare, props, true);
+			_useConnectionOnSystemTransactionEvents =
+				PropertiesHelper.GetBoolean(Cfg.Environment.UseConnectionOnSystemTransactionEvents, props, true);
 		}
 
 		public ITransaction CreateTransaction(ISessionImplementor session)
@@ -41,7 +41,7 @@ namespace NHibernate.Transaction
 
 			// Ensure the session does not run on a thread supposed to be blocked, waiting
 			// for transaction completion.
-			originatingSession.TransactionContext?.WaitOne();
+			originatingSession.TransactionContext?.Wait();
 
 			var transaction = System.Transactions.Transaction.Current;
 			// We may have defined the transaction context before having the connection, so we
@@ -64,10 +64,10 @@ namespace NHibernate.Transaction
 				return;
 			}
 
-			var transactionContext = new SystemTransactionContext(originatingSession, transaction, _useConnectionOnSystemTransactionPrepare);
+			var transactionContext = new SystemTransactionContext(originatingSession, transaction, _useConnectionOnSystemTransactionEvents);
 			transactionContext.AmbientTransaction.EnlistVolatile(
 				transactionContext,
-				_useConnectionOnSystemTransactionPrepare ? EnlistmentOptions.EnlistDuringPrepareRequired : EnlistmentOptions.None);
+				_useConnectionOnSystemTransactionEvents ? EnlistmentOptions.EnlistDuringPrepareRequired : EnlistmentOptions.None);
 			originatingSession.TransactionContext = transactionContext;
 
 			_logger.DebugFormat(
@@ -101,10 +101,10 @@ namespace NHibernate.Transaction
 			internal System.Transactions.Transaction AmbientTransaction { get; private set; }
 			public bool ShouldCloseSessionOnSystemTransactionCompleted { get; set; }
 			public bool IsInActiveTransaction { get; internal set; }
-			public bool CanFlushOnSystemTransactionCompleted => _useConnectionOnSystemTransactionPrepare;
+			public bool CanFlushOnSystemTransactionCompleted => _useConnectionOnSystemTransactionEvents;
 
 			private readonly ISessionImplementor _sessionImplementor;
-			private readonly bool _useConnectionOnSystemTransactionPrepare;
+			private readonly bool _useConnectionOnSystemTransactionEvents;
 			private volatile SemaphoreSlim _semaphore;
 			private volatile bool _locked;
 			private readonly AsyncLocal<bool> _bypassWait = new AsyncLocal<bool>();
@@ -112,16 +112,16 @@ namespace NHibernate.Transaction
 			public SystemTransactionContext(
 				ISessionImplementor sessionImplementor,
 				System.Transactions.Transaction transaction,
-				bool useConnectionOnSystemTransactionPrepare)
+				bool useConnectionOnSystemTransactionEvents)
 			{
 				_sessionImplementor = sessionImplementor;
 				AmbientTransaction = transaction.Clone();
 				AmbientTransaction.TransactionCompleted += TransactionCompleted;
-				_useConnectionOnSystemTransactionPrepare = useConnectionOnSystemTransactionPrepare;
+				_useConnectionOnSystemTransactionEvents = useConnectionOnSystemTransactionEvents;
 				IsInActiveTransaction = true;
 			}
 
-			public void WaitOne()
+			public void Wait()
 			{
 				if (_isDisposed)
 					return;
@@ -191,9 +191,9 @@ namespace NHibernate.Transaction
 				{
 					try
 					{
-						using (_sessionImplementor.ConnectionManager.BeginsFlushingFromSystemTransaction(_useConnectionOnSystemTransactionPrepare))
+						using (_sessionImplementor.ConnectionManager.BeginsProcessingFromSystemTransaction(_useConnectionOnSystemTransactionEvents))
 						{
-							if (_useConnectionOnSystemTransactionPrepare)
+							if (_useConnectionOnSystemTransactionEvents)
 							{
 								using (var tx = new TransactionScope(AmbientTransaction))
 								{
@@ -257,38 +257,48 @@ namespace NHibernate.Transaction
 
 			private void TransactionCompleted(object sender, TransactionEventArgs e)
 			{
-				e.Transaction.TransactionCompleted -= TransactionCompleted;
-				// This event may execute before second phase, so we cannot try to get the success from second phase.
-				// Using this event is required by example in case the prepare phase failed and called force rollback:
-				// no second phase would occur for this ressource. Maybe this may happen in some other circumstances
-				// too.
-				var wasSuccessful = false;
 				try
 				{
-					wasSuccessful =
-						AmbientTransaction.TransactionInformation.Status == TransactionStatus.Committed;
-				}
-				catch (ObjectDisposedException ode)
-				{
-					_logger.Warn("Completed transaction was disposed, assuming transaction rollback", ode);
-				}
+					e.Transaction.TransactionCompleted -= TransactionCompleted;
+					// This event may execute before second phase, so we cannot try to get the success from second phase.
+					// Using this event is required by example in case the prepare phase failed and called force rollback:
+					// no second phase would occur for this ressource. Maybe this may happen in some other circumstances
+					// too.
+					var wasSuccessful = false;
+					try
+					{
+						wasSuccessful =
+							AmbientTransaction.TransactionInformation.Status == TransactionStatus.Committed;
+					}
+					catch (ObjectDisposedException ode)
+					{
+						_logger.Warn("Completed transaction was disposed, assuming transaction rollback", ode);
+					}
 
-				// Allow transaction completed actions to run while others stay blocked.
-				_bypassWait.Value = true;
-				try
-				{
+					// Allow transaction completed actions to run while others stay blocked.
+					_bypassWait.Value = true;
 					using (new SessionIdLoggingContext(_sessionImplementor.SessionId))
 					{
 						// Flag active as false before running actions, otherwise the session may not cleanup as much
 						// as possible.
 						IsInActiveTransaction = false;
-						_sessionImplementor.ConnectionManager.AfterTransaction();
-						_sessionImplementor.AfterTransactionCompletion(wasSuccessful, null);
-						foreach (var dependentSession in _sessionImplementor.ConnectionManager.DependentSessions)
-							dependentSession.AfterTransactionCompletion(wasSuccessful, null);
+						// Never allows using connection on after transaction event.
+						using (_sessionImplementor.ConnectionManager.BeginsProcessingFromSystemTransaction(false))
+						{
+							_sessionImplementor.ConnectionManager.AfterTransaction();
+							_sessionImplementor.AfterTransactionCompletion(wasSuccessful, null);
+							foreach (var dependentSession in _sessionImplementor.ConnectionManager.DependentSessions)
+								dependentSession.AfterTransactionCompletion(wasSuccessful, null);
 
-						Cleanup(_sessionImplementor);
+							Cleanup(_sessionImplementor);
+						}
 					}
+				}
+				catch (Exception ex)
+				{
+					// May be run in a dedicated thread. Log any error, otherwise they could stay unlogged.
+					_logger.Error("Failure at transaction completion", ex);
+					throw;
 				}
 				finally
 				{
@@ -302,25 +312,29 @@ namespace NHibernate.Transaction
 				foreach (var dependentSession in session.ConnectionManager.DependentSessions.ToList())
 				{
 					var dependentContext = dependentSession.TransactionContext;
-					// Avoid a race condition with session disposal. (Protected on session side by WaitOne,
-					// but better have more safety.)
-					dependentSession.TransactionContext = null;
+					// Do not nullify TransactionContext here, could create a race condition with
+					// would be await-er on session for disposal (test cases cleanup checks by example).
 					if (dependentContext == null)
 						continue;
+					// Race condition with session disposal is protected on session side by Wait.
 					if (dependentContext.ShouldCloseSessionOnSystemTransactionCompleted)
 						// This changes the enumerated collection.
 						dependentSession.CloseSessionFromSystemTransaction();
+					// Now we can (and even must) nullify it.
+					dependentSession.TransactionContext = null;
 					dependentContext.Dispose();
 				}
 				var context = session.TransactionContext;
-				// Avoid a race condition with session disposal. (Protected on session side by WaitOne,
-				// but better have more safety.)
-				session.TransactionContext = null;
+				// Do not nullify TransactionContext here, could create a race condition with
+				// would be await-er on session for disposal (test cases cleanup checks by example).
+				// Race condition with session disposal is protected on session side by Wait.
 				if (context.ShouldCloseSessionOnSystemTransactionCompleted)
 				{
 					session.CloseSessionFromSystemTransaction();
 				}
-				// No dispose, done later.
+				// Now we can (and even must) nullify it.
+				session.TransactionContext = null;
+				// No context dispose, done later.
 			}
 
 			private bool _isDisposed;
@@ -363,8 +377,8 @@ namespace NHibernate.Transaction
 				_mainTransactionContext = mainTransactionContext;
 			}
 
-			public void WaitOne() =>
-				_mainTransactionContext.WaitOne();
+			public void Wait() =>
+				_mainTransactionContext.Wait();
 
 			public void Dispose() { }
 		}

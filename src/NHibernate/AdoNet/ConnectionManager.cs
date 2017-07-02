@@ -24,11 +24,11 @@ namespace NHibernate.AdoNet
 		[NonSerialized]
 		private DbConnection _connection;
 		[NonSerialized]
-		private DbConnection _dtcBackupConnection;
+		private DbConnection _backupConnection;
 		[NonSerialized]
 		private System.Transactions.Transaction _connectionAmbientTransaction;
 		[NonSerialized]
-		private System.Transactions.Transaction _dtcBackupConnectionAmbientTransaction;
+		private System.Transactions.Transaction _backupConnectionAmbientTransaction;
 		// Whether we own the connection, i.e. connect and disconnect automatically.
 		private bool _ownConnection;
 
@@ -56,9 +56,12 @@ namespace NHibernate.AdoNet
 		private bool _releasesEnabled = true;
 
 		[NonSerialized]
-		private bool _flushingFromDtcTransaction;
+		private bool _processingFromSystemTransaction;
 		[NonSerialized]
 		private bool _allowConnectionUsage = true;
+		// Do we need to release the current connection instead of yielding it?
+		[NonSerialized]
+		private bool _connectionReleaseRequired;
 
 		public ConnectionManager(
 			ISessionImplementor session,
@@ -127,6 +130,13 @@ namespace NHibernate.AdoNet
 
 			_transaction?.Dispose();
 
+			if (_backupConnection != null)
+			{
+				_log.Warn("Backup connection was still defined at time of closing.");
+				Factory.ConnectionProvider.CloseConnection(_backupConnection);
+				_backupConnection = null;
+			}
+
 			// When the connection is null nothing needs to be done - if there
 			// is a value for connection then Disconnect() was not called - so we
 			// need to ensure it gets called.
@@ -191,6 +201,13 @@ namespace NHibernate.AdoNet
 			if (!_allowConnectionUsage)
 			{
 				throw new HibernateException("Connection usage is currently disallowed");
+			}
+
+			if (_connectionReleaseRequired && _connection != null)
+			{
+				_connectionReleaseRequired = false;
+				_log.Debug("Releasing database connection");
+				CloseConnection();
 			}
 
 			if (_connection == null)
@@ -264,12 +281,17 @@ namespace NHibernate.AdoNet
 
 		private void AggressiveRelease()
 		{
-			if (_ownConnection && _flushingFromDtcTransaction == false)
+			if (_ownConnection)
 			{
-				_log.Debug("Aggressively releasing database connection");
 				if (_connection != null)
 				{
-					CloseConnection();
+					if (_processingFromSystemTransaction)
+						_connectionReleaseRequired = true;
+					else
+					{
+						_log.Debug("Aggressively releasing database connection");
+						CloseConnection();
+					}
 				}
 			}
 		}
@@ -405,6 +427,7 @@ namespace NHibernate.AdoNet
 		public void EnlistIfRequired(System.Transactions.Transaction transaction)
 		{
 			if (_connection == null ||
+				_connectionReleaseRequired ||
 				!ShouldAutoJoinTransaction ||
 				// Most connections do not support enlisting in a system transaction while already participating
 				// in a local transaction. They are not supposed to be mixed anyway.
@@ -427,21 +450,21 @@ namespace NHibernate.AdoNet
 			_connectionAmbientTransaction = transaction;
 		}
 
-		public IDisposable BeginsFlushingFromSystemTransaction(bool allowConnectionUsage)
+		public IDisposable BeginsProcessingFromSystemTransaction(bool allowConnectionUsage)
 		{
 			var needSwapping = _ownConnection && allowConnectionUsage &&
 				Factory.Dialect.SupportsConcurrentWritingConnectionsInSameTransaction;
 			if (needSwapping)
 			{
 				if (Batcher.HasOpenResources)
-					throw new InvalidOperationException("Batcher still has opened ressources at time of Flush from DTC.");
+					throw new InvalidOperationException("Batcher still has opened ressources at time of processing from system transaction.");
 				// Swap out current connection for avoiding using it concurrently to its own 2PC
-				_dtcBackupConnection = _connection;
-				_dtcBackupConnectionAmbientTransaction = _connectionAmbientTransaction;
+				_backupConnection = _connection;
+				_backupConnectionAmbientTransaction = _connectionAmbientTransaction;
 				_connection = null;
 				_connectionAmbientTransaction = null;
 			}
-			_flushingFromDtcTransaction = true;
+			_processingFromSystemTransaction = true;
 			var wasAllowingConnectionUsage = _allowConnectionUsage;
 			_allowConnectionUsage = allowConnectionUsage;
 			return new EndFlushingFromSystemTransaction(this, needSwapping, wasAllowingConnectionUsage);
@@ -462,19 +485,19 @@ namespace NHibernate.AdoNet
 
 			public void Dispose()
 			{
-				_manager._flushingFromDtcTransaction = false;
+				_manager._processingFromSystemTransaction = false;
 				_manager._allowConnectionUsage = _wasAllowingConnectionUsage;
 
 				if (!_hasSwappedConnection)
 					return;
 
-				// Release the connection potentially acquired for flushing from DTC.
+				// Release the connection potentially acquired for processing from system transaction.
 				_manager.DisconnectOwnConnection();
 				// Swap back current connection
-				_manager._connection = _manager._dtcBackupConnection;
-				_manager._connectionAmbientTransaction = _manager._dtcBackupConnectionAmbientTransaction;
-				_manager._dtcBackupConnection = null;
-				_manager._dtcBackupConnectionAmbientTransaction = null;
+				_manager._connection = _manager._backupConnection;
+				_manager._connectionAmbientTransaction = _manager._backupConnectionAmbientTransaction;
+				_manager._backupConnection = null;
+				_manager._backupConnectionAmbientTransaction = null;
 			}
 		}
 	}

@@ -26,6 +26,6 @@ namespace NHibernate.Transaction
 		/// safety issue. This method is already called by ITransactionFactory.EnlistInDistributedTransactionIfNeeded
 		/// if the factory requires synchronization.
 		/// </summary>
-		void WaitOne();
+		void Wait();
 	}
 }

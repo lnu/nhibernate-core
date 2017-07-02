@@ -12,7 +12,7 @@ namespace NHibernate.Test.SystemTransactions
 	[TestFixture]
 	public class SystemTransactionFixture : SystemTransactionFixtureBase
 	{
-		protected override bool UseConnectionOnSystemTransactionPrepare => true;
+		protected override bool UseConnectionOnSystemTransactionEvents => true;
 
 		[Test]
 		public void WillNotCrashOnPrepareFailure()
@@ -415,6 +415,6 @@ namespace NHibernate.Test.SystemTransactions
 
 	public class SystemTransactionWithoutConnectionFromPrepareFixture : SystemTransactionFixture
 	{
-		protected override bool UseConnectionOnSystemTransactionPrepare => false;
+		protected override bool UseConnectionOnSystemTransactionEvents => false;
 	}
 }

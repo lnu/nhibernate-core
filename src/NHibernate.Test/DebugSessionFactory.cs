@@ -68,7 +68,7 @@ namespace NHibernate.Test
 
 		private bool CheckSessionWasClosed(ISessionImplementor session)
 		{
-			session.TransactionContext?.WaitOne();
+			session.TransactionContext?.Wait();
 
 			if (!session.IsOpen)
 				return true;

@@ -10,21 +10,21 @@ namespace NHibernate.Test.SystemTransactions
 		protected override bool AppliesTo(ISessionFactoryImplementor factory)
 			=> factory.ConnectionProvider.Driver.SupportsSystemTransactions && base.AppliesTo(factory);
 
-		protected abstract bool UseConnectionOnSystemTransactionPrepare { get; }
+		protected abstract bool UseConnectionOnSystemTransactionEvents { get; }
 
 		protected override void Configure(Configuration configuration)
 		{
 			base.Configure(configuration);
 			configuration
 				.SetProperty(
-					Environment.UseConnectionOnSystemTransactionPrepare,
-					UseConnectionOnSystemTransactionPrepare.ToString());
+					Environment.UseConnectionOnSystemTransactionEvents,
+					UseConnectionOnSystemTransactionEvents.ToString());
 		}
 
 		protected void IgnoreIfUnsupported(bool explicitFlush)
 		{
 			Assume.That(
-				new[] { explicitFlush, UseConnectionOnSystemTransactionPrepare },
+				new[] { explicitFlush, UseConnectionOnSystemTransactionEvents },
 				Has.Some.EqualTo(true),
 				"Implicit flush cannot work without using connection from system transaction prepare phase");
 		}

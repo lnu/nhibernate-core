@@ -867,7 +867,7 @@ namespace NHibernate.Impl
 			using (new SessionIdLoggingContext(SessionId))
 			{
 				log.Debug("running IStatelessSession.Dispose()");
-				TransactionContext?.WaitOne();
+				TransactionContext?.Wait();
 				if (TransactionContext != null && TransactionContext.CanFlushOnSystemTransactionCompleted)
 				{
 					TransactionContext.ShouldCloseSessionOnSystemTransactionCompleted = true;

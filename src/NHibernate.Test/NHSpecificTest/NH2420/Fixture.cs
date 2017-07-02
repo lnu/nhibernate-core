@@ -95,7 +95,7 @@ namespace NHibernate.Test.NHSpecificTest.NH2420
 			// here. When having TransactionCompleted event, this event and the second phase
 			// tend to occur before reaching here. But some other NH cases demonstrate that
 			// TransactionCompleted may also occur "too late".
-			s.GetSessionImplementation().TransactionContext?.WaitOne();
+			s.GetSessionImplementation().TransactionContext?.Wait();
 
 			// Prior to the patch, an InvalidOperationException exception would occur in the
 			// TransactionCompleted delegate at this point with the message, "Disconnect cannot

@@ -14,7 +14,7 @@ namespace NHibernate.Test.SystemTransactions
 	public class DistributedSystemTransactionFixture : SystemTransactionFixtureBase
 	{
 		private static readonly ILog _log = LogManager.GetLogger(typeof(DistributedSystemTransactionFixture));
-		protected override bool UseConnectionOnSystemTransactionPrepare => true;
+		protected override bool UseConnectionOnSystemTransactionEvents => true;
 
 		protected override bool AppliesTo(Dialect.Dialect dialect)
 			=> dialect.SupportsDistributedTransactions && base.AppliesTo(dialect);
@@ -710,6 +710,6 @@ namespace NHibernate.Test.SystemTransactions
 
 	public class DistributedSystemTransactionWithoutConnectionFromPrepareFixture : DistributedSystemTransactionFixture
 	{
-		protected override bool UseConnectionOnSystemTransactionPrepare => false;
+		protected override bool UseConnectionOnSystemTransactionEvents => false;
 	}
 }

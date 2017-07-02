@@ -10,13 +10,13 @@ namespace NHibernate.Test.SystemTransactions
 		protected override IList Mappings
 			=> new string[] { };
 
-		protected virtual bool UseConnectionOnSystemTransactionPrepare => true;
+		protected virtual bool UseConnectionOnSystemTransactionEvents => true;
 
 		protected override void Configure(Configuration configuration)
 		{
 			configuration.SetProperty(
-				Environment.UseConnectionOnSystemTransactionPrepare,
-				UseConnectionOnSystemTransactionPrepare.ToString());
+				Environment.UseConnectionOnSystemTransactionEvents,
+				UseConnectionOnSystemTransactionEvents.ToString());
 		}
 
 		[Test]
@@ -203,6 +203,6 @@ namespace NHibernate.Test.SystemTransactions
 
 	public class TransactionWithoutConnectionFromPrepareNotificationFixture : TransactionNotificationFixture
 	{
-		protected override bool UseConnectionOnSystemTransactionPrepare => false;
+		protected override bool UseConnectionOnSystemTransactionEvents => false;
 	}
 }
