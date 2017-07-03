@@ -18,12 +18,12 @@ namespace NHibernate.Test.NHSpecificTest.NH1054
 			throw new NotImplementedException();
 		}
 
-		public void EnlistInDistributedTransactionIfNeeded(ISessionImplementor session)
+		public void EnlistInSystemTransactionIfNeeded(ISessionImplementor session)
 		{
 			throw new NotImplementedException();
 		}
 
-		public bool IsInDistributedActiveTransaction(ISessionImplementor session)
+		public bool IsInActiveSystemTransaction(ISessionImplementor session)
 		{
 			return false;
 		}

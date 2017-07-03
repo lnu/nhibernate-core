@@ -124,5 +124,17 @@ namespace NHibernate.Driver
 		/// Does this driver mandates <see cref="TimeSpan"/> values for time?
 		/// </summary>
 		bool RequiresTimeSpanForTime { get; }
+
+		/// <summary>
+		/// Does this driver connections support enlisting with a <see langword="null" /> transaction?
+		/// </summary>
+		/// <remarks>Enlisting with <see langword="null" /> allows to leave a completed transaction and
+		/// starts accepting auto-committed statements.</remarks>
+		bool SupportsNullEnlistment { get; }
+
+		/// <summary>
+		/// Does sometimes this driver finish distributed transaction after end of scope disposal?
+		/// </summary>
+		bool HasDelayedDistributedTransactionCompletion { get; }
 	}
 }

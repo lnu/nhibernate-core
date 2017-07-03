@@ -152,6 +152,7 @@
     <Compile Include="ISessionBuilder.cs" />
     <Compile Include="Impl\ISessionCreationOptions.cs" />
     <Compile Include="Tool\hbm2ddl\IDatabaseMetadata.cs" />
+    <Compile Include="Transaction\AdoNetWithDistributedTransactionFactory.cs" />
     <Compile Include="Util\DelegateHelper.cs" />
     <Compile Include="Dialect\BitwiseFunctionOperation.cs" />
     <Compile Include="Dialect\DB2Dialect.cs" />
@@ -674,7 +675,6 @@
     <Compile Include="StaleObjectStateException.cs" />
     <Compile Include="Tool\hbm2ddl\SchemaExport.cs" />
     <Compile Include="TransactionException.cs" />
-    <Compile Include="Transaction\AdoNetWithDistributedTransactionFactory.cs" />
     <Compile Include="Transaction\AdoTransaction.cs" />
     <Compile Include="Transaction\AfterTransactionCompletes.cs" />
     <Compile Include="Transaction\ITransactionFactory.cs" />

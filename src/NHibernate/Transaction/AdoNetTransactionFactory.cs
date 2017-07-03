@@ -20,12 +20,12 @@ namespace NHibernate.Transaction
 			return new AdoTransaction(session);
 		}
 
-		public void EnlistInDistributedTransactionIfNeeded(ISessionImplementor session)
+		public void EnlistInSystemTransactionIfNeeded(ISessionImplementor session)
 		{
 			// nothing need to do here, we only support local transactions with this factory
 		}
 
-		public bool IsInDistributedActiveTransaction(ISessionImplementor session)
+		public bool IsInActiveSystemTransaction(ISessionImplementor session)
 		{
 			return false;
 		}

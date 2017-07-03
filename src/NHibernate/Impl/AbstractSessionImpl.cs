@@ -81,7 +81,7 @@ namespace NHibernate.Impl
 		}
 
 		public abstract IBatcher Batcher { get; }
-		public abstract void CloseSessionFromDistributedTransaction();
+		public abstract void CloseSessionFromSystemTransaction();
 
 		[Obsolete("Use overload with IQueryExpression")]
 		public virtual IList List(string query, QueryParameters parameters)
@@ -439,7 +439,7 @@ namespace NHibernate.Impl
 
 		protected void EnlistInAmbientTransactionIfNeeded()
 		{
-			_factory.TransactionFactory.EnlistInDistributedTransactionIfNeeded(this);
+			_factory.TransactionFactory.EnlistInSystemTransactionIfNeeded(this);
 		}
 
 		internal IOuterJoinLoadable GetOuterJoinLoadable(string entityName)

@@ -332,6 +332,14 @@ namespace NHibernate.Dialect
 			get { return false; }
 		}
 
+		/// <summary>
+		/// Does this dialect supports concurrent writing connections?
+		/// </summary>
+		/// <remarks>
+		/// As documented at https://www.sqlite.org/faq.html#q5
+		/// </remarks>
+		public override bool SupportsConcurrentWritingConnections => false;
+
 		[Serializable]
 		protected class SQLiteCastFunction : CastFunction
 		{

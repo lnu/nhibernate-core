@@ -199,6 +199,14 @@ namespace NHibernate.Dialect
 			throw new NotSupportedException("The query should start with 'SELECT' or 'SELECT DISTINCT'");
 		}
 
+		/// <summary>
+		/// Does this dialect supports concurrent writing connections in the same transaction?
+		/// </summary>
+		/// <remarks>
+		/// Likely because this is seen as mandating promotion to distributed, which SQL Ce does not support.
+		/// </remarks>
+		public override bool SupportsConcurrentWritingConnectionsInSameTransaction => false;
+
 		public override long TimestampResolutionInTicks
 		{
 			get
@@ -214,6 +222,15 @@ namespace NHibernate.Dialect
 		/// Does this dialect support pooling parameter in connection string?
 		/// </summary>
 		public override bool SupportsPoolingParameter => false;
+
+		/// <summary>
+		/// Does this dialect support distributed transaction?
+		/// </summary>
+		/// <remarks>
+		/// Fails enlisting a connection into a distributed transaction, fails promoting a transaction
+		/// to distributed when it has already a connection enlisted.
+		/// </remarks>
+		public override bool SupportsDistributedTransactions => false;
 
 		#endregion
 	}

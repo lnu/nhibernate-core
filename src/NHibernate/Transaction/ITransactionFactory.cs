@@ -1,7 +1,4 @@
 using System.Collections;
-using System.Transactions;
-using NHibernate;
-using NHibernate.AdoNet;
 using NHibernate.Engine;
 using NHibernate.Engine.Transaction;
 
@@ -28,9 +25,9 @@ namespace NHibernate.Transaction
 		/// </summary>
 		ITransaction CreateTransaction(ISessionImplementor session);
 
-		void EnlistInDistributedTransactionIfNeeded(ISessionImplementor session);
+		void EnlistInSystemTransactionIfNeeded(ISessionImplementor session);
 
-		bool IsInDistributedActiveTransaction(ISessionImplementor session);
+		bool IsInActiveSystemTransaction(ISessionImplementor session);
 
 		void ExecuteWorkInIsolation(ISessionImplementor session, IIsolatedWork work, bool transacted);
 	}
