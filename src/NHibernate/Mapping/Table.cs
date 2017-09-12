@@ -41,6 +41,7 @@ namespace NHibernate.Mapping
 		private IKeyValue idValue;
 		private bool isAbstract;
 		private bool isSchemaQuoted;
+		private bool isCatalogQuoted;
 		private string name;
 		private bool quoted;
 		private string schema;
@@ -274,7 +275,18 @@ namespace NHibernate.Mapping
 		public string Catalog
 		{
 			get { return catalog; }
-			set { catalog = value; }
+			set
+			{
+				if (value != null && value[0] == '`')
+				{
+					isCatalogQuoted = true;
+					catalog = value.Substring(1, value.Length - 2);
+				}
+				else
+				{
+					catalog = value;
+				}
+			}
 		}
 
 		public string Comment
@@ -316,6 +328,11 @@ namespace NHibernate.Mapping
 		public bool IsSchemaQuoted
 		{
 			get { return isSchemaQuoted; }
+		}
+
+		public bool IsCatalogQuoted
+		{
+			get { return isCatalogQuoted; }
 		}
 
 		#region IRelationalModel Members
@@ -495,7 +512,7 @@ namespace NHibernate.Mapping
 			}
 			string quotedName = GetQuotedName(dialect);
 			string usedSchema = schema == null ? defaultSchema : GetQuotedSchema(dialect);
-			string usedCatalog = catalog ?? defaultCatalog;
+			string usedCatalog = catalog == null ? defaultCatalog : GetQuotedCatalog(dialect);
 			return dialect.Qualify(usedCatalog, usedSchema, quotedName);
 		}
 
@@ -528,32 +545,43 @@ namespace NHibernate.Mapping
 
 		public string GetQuotedSchema(Dialect.Dialect dialect)
 		{
-			return IsSchemaQuoted ? dialect.OpenQuote + schema + dialect.CloseQuote : schema;
+			return IsSchemaQuoted ? dialect.QuoteForSchemaName(schema) : schema;
+		}
+
+		/// <summary> returns quoted name as it is in the mapping file.</summary>
+		public string GetQuotedCatalog()
+		{
+			return isCatalogQuoted ? "`" + catalog + "`" : catalog;
+		}
+
+		public string GetQuotedCatalog(Dialect.Dialect dialect)
+		{
+			return IsCatalogQuoted ? dialect.QuoteForCatalogName(catalog) : catalog;
 		}
 
 		/// <summary>
-		/// Gets the schema for this table in quoted form if it is necessary.
+		/// Gets the catalog for this table in quoted form if it is necessary.
 		/// </summary>
 		/// <param name="dialect">
 		/// The <see cref="Dialect.Dialect" /> that knows how to quote the table name.
 		/// </param>
 		/// <returns>
-		/// The schema name for this table in a form that is safe to use inside
+		/// The catalog name for this table in a form that is safe to use inside
 		/// of a SQL statement. Quoted if it needs to be, not quoted if it does not need to be.
 		/// </returns>
-		public string GetQuotedSchemaName(Dialect.Dialect dialect)
+		public string GetQuotedCatalogName(Dialect.Dialect dialect)
 		{
-			if (schema == null)
+			if (catalog == null)
 			{
 				return null;
 			}
 
-			if (schema.StartsWith("`"))
+			if (catalog.StartsWith("`"))
 			{
-				return dialect.QuoteForSchemaName(schema.Substring(1, schema.Length - 2));
+				return dialect.QuoteForSchemaName(catalog.Substring(1, catalog.Length - 2));
 			}
 
-			return schema;
+			return catalog;
 		}
 
 		/// <summary>
@@ -727,7 +755,7 @@ namespace NHibernate.Mapping
 			return uk;
 		}
 
-		public virtual void CreateForeignKeys() {}
+		public virtual void CreateForeignKeys() { }
 
 		public virtual ForeignKey CreateForeignKey(string keyName, IEnumerable<Column> keyColumns, string referencedEntityName)
 		{
