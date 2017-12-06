@@ -1921,6 +1921,66 @@ namespace NHibernate.Dialect
 			return unquoted;
 		}
 
+		/// <summary>
+		/// Convert back-tilt quotes in a name for being used as an aliasname.
+		/// </summary>
+		/// <param name="aliasName">Name of the alias.</param>
+		/// <returns>A name with back-tilt quotes converted if any.</returns>
+		public virtual string ConvertQuotesForAliasName(string aliasName)
+		{
+			return StringHelper.IsBackticksEnclosed(aliasName)
+				? Quote(StringHelper.PurgeBackticksEnclosing(aliasName))
+				: aliasName;
+		}
+
+		/// <summary>
+		/// Convert back-tilt quotes in a name for being used as a columnname.
+		/// </summary>
+		/// <param name="columnName">Name of the column.</param>
+		/// <returns>A name with back-tilt quotes converted if any.</returns>
+		public virtual string ConvertQuotesForColumnName(string columnName)
+		{
+			return StringHelper.IsBackticksEnclosed(columnName)
+				? Quote(columnName)
+				: columnName;
+		}
+
+		/// <summary>
+		/// Convert back-tilt quotes in a name for being used as a tablename.
+		/// </summary>
+		/// <param name="tableName">Name of the table.</param>
+		/// <returns>A name with back-tilt quotes converted if any.</returns>
+		public virtual string ConvertQuotesForTableName(string tableName)
+		{
+			return StringHelper.IsBackticksEnclosed(tableName)
+				? Quote(tableName)
+				: tableName;
+		}
+
+		/// <summary>
+		/// Convert back-tilt quotes in a name for being used as a schemaname.
+		/// </summary>
+		/// <param name="schemaName">Name of the schema.</param>
+		/// <returns>A name with back-tilt quotes converted if any.</returns>
+		public virtual string ConvertQuotesForSchemaName(string schemaName)
+		{
+			return StringHelper.IsBackticksEnclosed(schemaName)
+				? Quote(schemaName)
+				: schemaName;
+		}
+
+		/// <summary>
+		/// Convert back-tilt quotes in a name for being used as a catalogname.
+		/// </summary>
+		/// <param name="catalogName">Name of the catalog.</param>
+		/// <returns>A name with back-tilt quotes converted if any.</returns>
+		public virtual string ConvertQuotesForCatalogName(string catalogName)
+		{
+			return StringHelper.IsBackticksEnclosed(catalogName)
+				? Quote(catalogName)
+				: catalogName;
+		}
+
 		#endregion
 
 		#region Union subclass support

@@ -817,9 +817,8 @@ namespace NHibernate.Cfg
 		{
 			SecondPassCompile();
 
-			// we should quote catalog and schema if needed
-			string defaultCatalog = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultCatalog, properties, null), dialect);
-			string defaultSchema = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultSchema, properties, null), dialect);
+			var defaultCatalog = GetQuotedDefaultCatalog(dialect);
+			var defaultSchema = GetQuotedDefaultSchema(dialect);
 
 			var script = new List<string>();
 
@@ -893,9 +892,8 @@ namespace NHibernate.Cfg
 		{
 			SecondPassCompile();
 
-			// we should quote catalog and schema if needed
-			string defaultCatalog = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultCatalog, properties, null), dialect);
-			string defaultSchema = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultSchema, properties, null), dialect);
+			var defaultCatalog = GetQuotedDefaultCatalog(dialect);
+			var defaultSchema = GetQuotedDefaultSchema(dialect);
 
 			var script = new List<string>();
 
@@ -2325,9 +2323,8 @@ namespace NHibernate.Cfg
 		{
 			SecondPassCompile();
 
-			// we should quote catalog and schema if needed
-			string defaultCatalog = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultCatalog, properties, null), dialect);
-			string defaultSchema = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultSchema, properties, null), dialect);
+			var defaultCatalog = GetQuotedDefaultCatalog(dialect);
+			var defaultSchema = GetQuotedDefaultSchema(dialect);
 
 			var script = new List<string>(50);
 			foreach (var table in TableMappings)
@@ -2406,9 +2403,8 @@ namespace NHibernate.Cfg
 		{
 			SecondPassCompile();
 
-			// we should quote catalog and schema if needed
-			string defaultCatalog = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultCatalog, properties, null), dialect);
-			string defaultSchema = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultSchema, properties, null), dialect);
+			var defaultCatalog = GetQuotedDefaultCatalog(dialect);
+			var defaultSchema = GetQuotedDefaultSchema(dialect);
 
 			var validationErrors = new List<string>();
 			var iter = TableMappings;
@@ -2457,8 +2453,8 @@ namespace NHibernate.Cfg
 		private IEnumerable<IPersistentIdentifierGenerator> IterateGenerators(Dialect.Dialect dialect)
 		{
 			var generators = new Dictionary<string, IPersistentIdentifierGenerator>();
-			string defaultCatalog = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultCatalog, properties, null), dialect);
-			string defaultSchema = GetQuotedName(PropertiesHelper.GetString(Environment.DefaultSchema, properties, null), dialect);
+			var defaultCatalog = GetQuotedDefaultCatalog(dialect);
+			var defaultSchema = GetQuotedDefaultSchema(dialect);
 
 			foreach (var pc in classes.Values)
 			{
@@ -2490,24 +2486,25 @@ namespace NHibernate.Cfg
 		}
 
 		/// <summary>
-		/// Returns a quoted name(schema/catalog) if needed
+		/// Returns the default catalog, quoted converted if needed.
 		/// </summary>
-		/// <param name="name">The schema name</param>
 		/// <param name="dialect">The instance of dialect to use</param>
-		/// <returns></returns>
-		private string GetQuotedName(string name, Dialect.Dialect dialect)
+		/// <returns>The default catalog, with back-tilt quote converted if any.</returns>
+		private string GetQuotedDefaultCatalog(Dialect.Dialect dialect)
 		{
-			if (name == null)
-			{
-				return null;
-			}
+			var name = PropertiesHelper.GetString(Environment.DefaultCatalog, properties, null);
+			return dialect.ConvertQuotesForCatalogName(name);
+		}
 
-			if (StringHelper.IsBackticksEnclosed(name))
-			{
-				return dialect.QuoteForSchemaName(StringHelper.PurgeBackticksEnclosing(name));
-			}
-
-			return name;
+		/// <summary>
+		/// Returns the default catalog, quoted converted if needed.
+		/// </summary>
+		/// <param name="dialect">The instance of dialect to use</param>
+		/// <returns>The default catalog, with back-tilt quote converted if any.</returns>
+		private string GetQuotedDefaultSchema(Dialect.Dialect dialect)
+		{
+			var name = PropertiesHelper.GetString(Environment.DefaultSchema, properties, null);
+			return dialect.ConvertQuotesForSchemaName(name);
 		}
 	}
 }
