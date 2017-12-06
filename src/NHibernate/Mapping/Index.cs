@@ -44,8 +44,8 @@ namespace NHibernate.Mapping
 
 		public static string BuildSqlDropIndexString(Dialect.Dialect dialect, Table table, string name, string defaultCatalog, string defaultSchema)
 		{
-			var catalog = table.Catalog == null ? defaultCatalog : table.GetQuotedCatalog(dialect);
-			var schema = table.Schema == null ? defaultSchema : table.GetQuotedSchema(dialect);
+			var catalog = table.GetQuotedCatalog(dialect, defaultCatalog);
+			var schema = table.GetQuotedSchema(dialect, defaultSchema);
 			var tableName = table.GetQuotedName(dialect);
 
 			return new StringBuilder()

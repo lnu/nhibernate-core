@@ -510,9 +510,9 @@ namespace NHibernate.Mapping
 			{
 				return "( " + subselect + " )";
 			}
-			string quotedName = GetQuotedName(dialect);
-			string usedSchema = schema == null ? defaultSchema : GetQuotedSchema(dialect);
-			string usedCatalog = catalog == null ? defaultCatalog : GetQuotedCatalog(dialect);
+			var quotedName = GetQuotedName(dialect);
+			var usedSchema = GetQuotedSchema(dialect, defaultSchema);
+			var usedCatalog = GetQuotedCatalog(dialect, defaultCatalog);
 			return dialect.Qualify(usedCatalog, usedSchema, quotedName);
 		}
 
@@ -548,6 +548,12 @@ namespace NHibernate.Mapping
 			return IsSchemaQuoted ? dialect.QuoteForSchemaName(schema) : schema;
 		}
 
+		public string GetQuotedSchema(Dialect.Dialect dialect, string defaultQuotedSchema)
+		{
+			return schema == null ? defaultQuotedSchema :
+				GetQuotedSchema(dialect);
+		}
+
 		/// <summary> returns quoted name as it is in the mapping file.</summary>
 		public string GetQuotedCatalog()
 		{
@@ -557,6 +563,12 @@ namespace NHibernate.Mapping
 		public string GetQuotedCatalog(Dialect.Dialect dialect)
 		{
 			return IsCatalogQuoted ? dialect.QuoteForCatalogName(catalog) : catalog;
+		}
+
+		public string GetQuotedCatalog(Dialect.Dialect dialect, string defaultQuotedCatalog)
+		{
+			return catalog == null ? defaultQuotedCatalog :
+				GetQuotedCatalog(dialect);
 		}
 
 		/// <summary>

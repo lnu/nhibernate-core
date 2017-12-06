@@ -650,8 +650,8 @@ namespace NHibernate.Dialect
 		[Obsolete("Please use overload with catalog and schema parameters")]
 		protected virtual string GetSelectExistingObject(string name, Table table)
 		{
-			var catalog = table.Catalog == null ? null : table.GetQuotedCatalog(this);
-			var schema = table.Schema == null ? null : table.GetQuotedSchema(this);
+			var catalog = table.GetQuotedCatalog(this, null);
+			var schema = table.GetQuotedSchema(this, null);
 			return GetSelectExistingObject(catalog, schema, table.GetQuotedName(), name);
 		}
 

@@ -768,8 +768,8 @@ namespace NHibernate.Dialect
 		[Obsolete("Can cause issues when a custom schema is defined (https://nhibernate.jira.com/browse/NH-1285). The new overload with the defaultSchema parameter should be used instead")]
 		public virtual string GetIfNotExistsCreateConstraint(Table table, string name)
 		{
-			var catalog = table.Catalog == null ? null : table.GetQuotedCatalog(this);
-			var schema = table.Schema == null ? null : table.GetQuotedSchema(this);
+			var catalog = table.GetQuotedCatalog(this, null);
+			var schema = table.GetQuotedSchema(this, null);
 			var tableName = table.GetQuotedName(this);
 
 			return GetIfNotExistsCreateConstraint(catalog, schema, tableName, name);
@@ -786,8 +786,8 @@ namespace NHibernate.Dialect
 		[Obsolete("Can cause issues when a custom schema is defined (https://nhibernate.jira.com/browse/NH-1285). The new overload with the defaultSchema parameter should be used instead")]
 		public virtual string GetIfNotExistsCreateConstraintEnd(Table table, string name)
 		{
-			var catalog = table.Catalog == null ? null : table.GetQuotedCatalog(this);
-			var schema = table.Schema == null ? null : table.GetQuotedSchema(this);
+			var catalog = table.GetQuotedCatalog(this, null);
+			var schema = table.GetQuotedSchema(this, null);
 			var tableName = table.GetQuotedName(this);
 
 			return GetIfNotExistsCreateConstraintEnd(catalog, schema, tableName, name);
@@ -803,8 +803,8 @@ namespace NHibernate.Dialect
 		[Obsolete("Can cause issues when a custom schema is defined (https://nhibernate.jira.com/browse/NH-1285). The new overload with the defaultSchema parameter should be used instead")]
 		public virtual string GetIfExistsDropConstraint(Table table, string name)
 		{
-			var catalog = table.Catalog == null ? null : table.GetQuotedCatalog(this);
-			var schema = table.Schema == null ? null : table.GetQuotedSchema(this);
+			var catalog = table.GetQuotedCatalog(this, null);
+			var schema = table.GetQuotedSchema(this, null);
 			var tableName = table.GetQuotedName(this);
 
 			return GetIfExistsDropConstraint(catalog, schema, tableName, name);
@@ -821,8 +821,8 @@ namespace NHibernate.Dialect
 		[Obsolete("Can cause issues when a custom schema is defined (https://nhibernate.jira.com/browse/NH-1285). The new overload with the defaultSchema parameter should be used instead")]
 		public virtual string GetIfExistsDropConstraintEnd(Table table, string name)
 		{
-			var catalog = table.Catalog == null ? null : table.GetQuotedCatalog(this);
-			var schema = table.Schema == null ? null : table.GetQuotedSchema(this);
+			var catalog = table.GetQuotedCatalog(this, null);
+			var schema = table.GetQuotedSchema(this, null);
 			var tableName = table.GetQuotedName(this);
 
 			return GetIfExistsDropConstraintEnd(catalog, schema, tableName, name);

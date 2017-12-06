@@ -86,8 +86,8 @@ namespace NHibernate.Mapping
 		/// </returns>
 		public override string SqlDropString(Dialect.Dialect dialect, string defaultCatalog, string defaultSchema)
 		{
-			var catalog = Table.Catalog == null ? defaultCatalog : Table.GetQuotedCatalog(dialect);
-			var schema = Table.Schema == null ? defaultSchema : Table.GetQuotedSchema(dialect);
+			var catalog = Table.GetQuotedCatalog(dialect, defaultCatalog);
+			var schema = Table.GetQuotedSchema(dialect, defaultSchema);
 			var quotedName = Table.GetQuotedName(dialect);
 
 			return new StringBuilder()
