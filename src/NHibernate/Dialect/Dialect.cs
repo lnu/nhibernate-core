@@ -764,6 +764,7 @@ namespace NHibernate.Dialect
 		/// <param name="table">The table.</param>
 		/// <param name="name">The name.</param>
 		/// <returns></returns>
+		// Since v5.1
 		[Obsolete("Can cause issues when a custom schema is defined (https://nhibernate.jira.com/browse/NH-1285). The new overload with the defaultSchema parameter should be used instead")]
 		public virtual string GetIfNotExistsCreateConstraint(Table table, string name)
 		{
@@ -781,6 +782,7 @@ namespace NHibernate.Dialect
 		/// <param name="table">The table.</param>
 		/// <param name="name">The name.</param>
 		/// <returns></returns>
+		// Since v5.1
 		[Obsolete("Can cause issues when a custom schema is defined (https://nhibernate.jira.com/browse/NH-1285). The new overload with the defaultSchema parameter should be used instead")]
 		public virtual string GetIfNotExistsCreateConstraintEnd(Table table, string name)
 		{
@@ -797,6 +799,7 @@ namespace NHibernate.Dialect
 		/// <param name="table">The table.</param>
 		/// <param name="name">The name.</param>
 		/// <returns></returns>
+		// Since v5.1
 		[Obsolete("Can cause issues when a custom schema is defined (https://nhibernate.jira.com/browse/NH-1285). The new overload with the defaultSchema parameter should be used instead")]
 		public virtual string GetIfExistsDropConstraint(Table table, string name)
 		{
@@ -814,6 +817,7 @@ namespace NHibernate.Dialect
 		/// <param name="table">The table.</param>
 		/// <param name="name">The name.</param>
 		/// <returns></returns>
+		// Since v5.1
 		[Obsolete("Can cause issues when a custom schema is defined (https://nhibernate.jira.com/browse/NH-1285). The new overload with the defaultSchema parameter should be used instead")]
 		public virtual string GetIfExistsDropConstraintEnd(Table table, string name)
 		{
@@ -1744,7 +1748,7 @@ namespace NHibernate.Dialect
 		/// </remarks>
 		protected virtual string Quote(string name)
 		{
-			string quotedName = name.Replace(OpenQuote.ToString(), new string(OpenQuote, 2));
+			var quotedName = name.Replace(OpenQuote.ToString(), new string(OpenQuote, 2));
 
 			// in some dbs the Open and Close Quote are the same chars - if they are 
 			// then we don't have to escape the Close Quote char because we already

@@ -646,6 +646,15 @@ namespace NHibernate.Dialect
 			return string.Format(@"if not exists ({0})", selectExistingObject);
 		}
 
+		// Since v5.1
+		[Obsolete("Please use overload with catalog and schema parameters")]
+		protected virtual string GetSelectExistingObject(string name, Table table)
+		{
+			var catalog = table.Catalog == null ? null : table.GetQuotedCatalog(this);
+			var schema = table.Schema == null ? null : table.GetQuotedSchema(this);
+			return GetSelectExistingObject(catalog, schema, table.GetQuotedName(), name);
+		}
+
 		/// <summary>
 		/// Returns a string containing the query to check if an object exists
 		/// </summary>

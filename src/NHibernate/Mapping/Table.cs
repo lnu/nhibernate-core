@@ -551,7 +551,7 @@ namespace NHibernate.Mapping
 		/// <summary> returns quoted name as it is in the mapping file.</summary>
 		public string GetQuotedCatalog()
 		{
-			return isCatalogQuoted ? "`" + catalog + "`" : catalog;
+			return IsCatalogQuoted ? "`" + catalog + "`" : catalog;
 		}
 
 		public string GetQuotedCatalog(Dialect.Dialect dialect)
@@ -560,28 +560,30 @@ namespace NHibernate.Mapping
 		}
 
 		/// <summary>
-		/// Gets the catalog for this table in quoted form if it is necessary.
+		/// Gets the schema for this table in quoted form if it is necessary.
 		/// </summary>
 		/// <param name="dialect">
-		/// The <see cref="Dialect.Dialect" /> that knows how to quote the table name.
+		/// The <see cref="Dialect.Dialect" /> that knows how to quote the schema name.
 		/// </param>
 		/// <returns>
-		/// The catalog name for this table in a form that is safe to use inside
+		/// The schema name for this table in a form that is safe to use inside
 		/// of a SQL statement. Quoted if it needs to be, not quoted if it does not need to be.
 		/// </returns>
-		public string GetQuotedCatalogName(Dialect.Dialect dialect)
+		// Since v5.1; back-tilts are removed when storing schema: this thing is non-sens.
+		[Obsolete("This method is no-op and has no usages")]
+		public string GetQuotedSchemaName(Dialect.Dialect dialect)
 		{
-			if (catalog == null)
+			if (schema == null)
 			{
 				return null;
 			}
 
-			if (catalog.StartsWith("`"))
+			if (schema.StartsWith("`"))
 			{
-				return dialect.QuoteForSchemaName(catalog.Substring(1, catalog.Length - 2));
+				return dialect.QuoteForSchemaName(schema.Substring(1, schema.Length - 2));
 			}
 
-			return catalog;
+			return schema;
 		}
 
 		/// <summary>
